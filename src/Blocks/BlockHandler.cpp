@@ -28,6 +28,7 @@
 #include "BlockDropSpenser.h"
 #include "BlockEnchantmentTable.h"
 #include "BlockEnderchest.h"
+#include "BlockEndProtalFrameHandler.h"
 #include "BlockEntity.h"
 #include "BlockFarmland.h"
 #include "BlockFence.h"
@@ -232,6 +233,7 @@ cBlockHandler * cBlockHandler::CreateBlockHandler(BLOCKTYPE a_BlockType)
 		case E_BLOCK_EMERALD_ORE:                   return new cBlockOreHandler             (a_BlockType);
 		case E_BLOCK_ENCHANTMENT_TABLE:             return new cBlockEnchantmentTableHandler(a_BlockType);
 		case E_BLOCK_ENDER_CHEST:                   return new cBlockEnderchestHandler      (a_BlockType);
+		case E_BLOCK_END_PORTAL_FRAME:              return new cBlockEndPortalFrameHandler;
 		case E_BLOCK_FARMLAND:                      return new cBlockFarmlandHandler        (a_BlockType);
 		case E_BLOCK_FENCE:                         return new cBlockFenceHandler           (a_BlockType);
 		case E_BLOCK_FROSTED_ICE:                   return new cBlockIceHandler             (a_BlockType);
