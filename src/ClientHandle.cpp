@@ -755,7 +755,7 @@ void cClientHandle::HandleEnchantItem(UInt8 a_WindowID, UInt8 a_Enchantment)
 		return;
 	}
 
-	cEnchantingWindow * Window = reinterpret_cast<cEnchantingWindow *>(m_Player->GetWindow());
+	auto Window = static_cast<cEnchantingWindow *>(m_Player->GetWindow());
 	cItem Item = *Window->m_SlotArea->GetSlot(0, *m_Player);  // Make a copy of the item
 	short BaseEnchantmentLevel = Window->GetPropertyValue(a_Enchantment);
 
@@ -923,12 +923,12 @@ void cClientHandle::UnregisterPluginChannels(const AStringVector & a_ChannelList
 
 void cClientHandle::HandleBeaconSelection(int a_PrimaryEffect, int a_SecondaryEffect)
 {
-	cWindow * Window = m_Player->GetWindow();
+	auto Window = m_Player->GetWindow();
 	if ((Window == nullptr) || (Window->GetWindowType() != cWindow::wtBeacon))
 	{
 		return;
 	}
-	cBeaconWindow * BeaconWindow = reinterpret_cast<cBeaconWindow *>(Window);
+	auto BeaconWindow = static_cast<cBeaconWindow *>(Window);
 
 	if (Window->GetSlot(*m_Player, 0)->IsEmpty())
 	{
@@ -1006,14 +1006,15 @@ void cClientHandle::HandleCommandBlockEntityChange(UInt32 a_EntityID, const AStr
 
 void cClientHandle::HandleAnvilItemName(const AString & a_ItemName)
 {
-	if ((m_Player->GetWindow() == nullptr) || (m_Player->GetWindow()->GetWindowType() != cWindow::wtAnvil))
+	auto Window = m_Player->GetWindow();
+	if ((Window == nullptr) || (Window->GetWindowType() != cWindow::wtAnvil))
 	{
 		return;
 	}
 
 	if (a_ItemName.length() <= 30)
 	{
-		reinterpret_cast<cAnvilWindow *>(m_Player->GetWindow())->SetRepairedItemName(a_ItemName, m_Player);
+		static_cast<cAnvilWindow *>(Window)->SetRepairedItemName(a_ItemName, m_Player);
 	}
 }
 
@@ -1670,7 +1671,7 @@ void cClientHandle::HandleWindowClick(UInt8 a_WindowID, Int16 a_SlotNum, eClickA
 		ItemToString(a_HeldItem).c_str(), a_HeldItem.m_ItemCount
 	);
 
-	cWindow * Window = m_Player->GetWindow();
+	auto Window = m_Player->GetWindow();
 	if (Window == nullptr)
 	{
 		LOGWARNING("Player \"%s\" clicked in a non-existent window. Ignoring", m_Username.c_str());

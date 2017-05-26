@@ -1209,31 +1209,16 @@ cMinecartWithChest::cMinecartWithChest(double a_X, double a_Y, double a_Z) :
 
 void cMinecartWithChest::OnRightClicked(cPlayer & a_Player)
 {
-	// If the window is not created, open it anew:
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenNewWindow();
-		Window = GetWindow();
-	}
-
-	// Open the window for the player:
-	if (Window != nullptr)
-	{
-		if (a_Player.GetWindow() != Window)
-		{
-			a_Player.OpenWindow(*Window);
-		}
-	}
+	OpenWindow(&a_Player);
 }
 
 
 
 
 
-void cMinecartWithChest::OpenNewWindow()
+std::shared_ptr<cWindow> cMinecartWithChest::NewWindow()
 {
-	OpenWindow(new cMinecartWithChestWindow(this));
+	return std::make_shared<cMinecartWithChestWindow>(this);
 }
 
 
@@ -1242,10 +1227,8 @@ void cMinecartWithChest::OpenNewWindow()
 
 void cMinecartWithChest::Destroyed()
 {
-	if (GetWindow() != nullptr)
-	{
-		GetWindow()->OwnerDestroyed();
-	}
+	DestroyWindow();
+
 	cItems Pickups;
 	m_Contents.CopyToItems(Pickups);
 

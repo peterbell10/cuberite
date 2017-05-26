@@ -186,14 +186,9 @@ protected:
 	cCriticalSection m_CS;
 	cPlayerList      m_OpenedBy;
 
-	bool m_IsDestroyed;
-
 	cWindowOwner * m_Owner;
 
 	static Byte m_WindowIDCounter;
-
-	/** Sets the internal flag as "destroyed"; notifies the owner that the window is destroying */
-	virtual void Destroy(void);
 
 	/** Returns the correct slot area for the specified window-global SlotNum
 	Also returns the area-local SlotNum corresponding to the GlobalSlotNum

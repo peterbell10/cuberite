@@ -82,9 +82,10 @@ protected:
 		ASSERT(a_Grid == &m_Contents);
 		if (m_World != nullptr)
 		{
-			if (GetWindow() != nullptr)
+			auto Window = GetWindow();
+			if (Window != nullptr)
 			{
-				GetWindow()->BroadcastWholeWindow();
+				Window->BroadcastWholeWindow();
 			}
 
 			m_World->MarkChunkDirty(GetChunkX(), GetChunkZ());

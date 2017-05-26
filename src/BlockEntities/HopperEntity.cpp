@@ -82,22 +82,7 @@ void cHopperEntity::SendTo(cClientHandle & a_Client)
 
 bool cHopperEntity::UsedBy(cPlayer * a_Player)
 {
-	// If the window is not created, open it anew:
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenNewWindow();
-		Window = GetWindow();
-	}
-
-	// Open the window for the player:
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
+	OpenWindow(a_Player);
 
 	// This is rather a hack
 	// Instead of marking the chunk as dirty upon chest contents change, we mark it dirty now
@@ -113,9 +98,9 @@ bool cHopperEntity::UsedBy(cPlayer * a_Player)
 
 
 
-void cHopperEntity::OpenNewWindow(void)
+std::shared_ptr<cWindow> cHopperEntity::NewWindow(void)
 {
-	OpenWindow(new cHopperWindow(m_PosX, m_PosY, m_PosZ, this));
+	return std::make_shared<cHopperWindow>(m_PosX, m_PosY, m_PosZ, this);
 }
 
 

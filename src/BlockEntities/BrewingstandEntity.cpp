@@ -41,7 +41,7 @@ cBrewingstandEntity::cBrewingstandEntity(int a_BlockX, int a_BlockY, int a_Block
 cBrewingstandEntity::~cBrewingstandEntity()
 {
 	// Tell window its owner is destroyed
-	cWindow * Window = GetWindow();
+	auto Window = GetWindow();
 	if (Window != nullptr)
 	{
 		Window->OwnerDestroyed();
@@ -54,19 +54,9 @@ cBrewingstandEntity::~cBrewingstandEntity()
 
 bool cBrewingstandEntity::UsedBy(cPlayer * a_Player)
 {
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
+	if (!OpenWindow(a_Player))
 	{
-		OpenWindow(new cBrewingstandWindow(m_PosX, m_PosY, m_PosZ, this));
-		Window = GetWindow();
-	}
-
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
+		return false;
 	}
 
 	if (m_IsBrewing)
@@ -79,6 +69,15 @@ bool cBrewingstandEntity::UsedBy(cPlayer * a_Player)
 	}
 	BroadcastProgress(1, m_RemainingFuel);
 	return true;
+}
+
+
+
+
+
+std::shared_ptr<cWindow> cBrewingstandEntity::NewWindow()
+{
+	return std::make_shared<cBrewingstandWindow>(m_PosX, m_PosY, m_PosZ, this);
 }
 
 
@@ -171,7 +170,7 @@ void cBrewingstandEntity::SendTo(cClientHandle & a_Client)
 
 void cBrewingstandEntity::BroadcastProgress(short a_ProgressbarID, short a_Value)
 {
-	cWindow * Window = GetWindow();
+	auto Window = GetWindow();
 	if (Window != nullptr)
 	{
 		Window->SetProperty(a_ProgressbarID, a_Value);

@@ -78,6 +78,10 @@ protected:
 	char m_BeaconLevel;
 
 	cEntityEffect::eType m_PrimaryEffect, m_SecondaryEffect;
+
+private:
+	/** Creates a new window for this beacon. */
+	virtual std::shared_ptr<cWindow> NewWindow() override;
 } ;  // tolua_export
 
 

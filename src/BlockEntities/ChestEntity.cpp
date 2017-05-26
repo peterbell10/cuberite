@@ -88,22 +88,7 @@ bool cChestEntity::UsedBy(cPlayer * a_Player)
 		}
 	}
 
-	// If the window is not created, open it anew:
-	cWindow * Window = PrimaryChest->GetWindow();
-	if (Window == nullptr)
-	{
-		PrimaryChest->OpenNewWindow();
-		Window = PrimaryChest->GetWindow();
-	}
-
-	// Open the window for the player:
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
+	PrimaryChest->OpenWindow(a_Player);
 
 	// This is rather a hack
 	// Instead of marking the chunk as dirty upon chest contents change, we mark it dirty now
@@ -167,7 +152,7 @@ void cChestEntity::ScanNeighbours()
 
 
 
-void cChestEntity::OpenNewWindow(void)
+std::shared_ptr<cWindow> cChestEntity::NewWindow(void)
 {
 	if (m_Neighbour != nullptr)
 	{
@@ -175,26 +160,12 @@ void cChestEntity::OpenNewWindow(void)
 			(m_Neighbour->GetPosX() < GetPosX()) ||
 			(m_Neighbour->GetPosZ() < GetPosZ())
 		);
-		OpenWindow(new cChestWindow(this, m_Neighbour));
+		return std::make_shared<cChestWindow>(this, m_Neighbour);
 	}
 	else
 	{
 		// There is no chest neighbour, open a single-chest window:
-		OpenWindow(new cChestWindow(this));
-	}
-}
-
-
-
-
-
-void cChestEntity::DestroyWindow()
-{
-	cWindow * Window = GetWindow();
-	if (Window != nullptr)
-	{
-		Window->OwnerDestroyed();
-		CloseWindow();
+		return std::make_shared<cChestWindow>(this);
 	}
 }
 
@@ -210,3 +181,4 @@ bool cChestEntity::IsBlocked()
 		!cBlockInfo::IsTransparent(GetWorld()->GetBlock(GetPosX(), GetPosY() + 1, GetPosZ()))
 	);
 }
+

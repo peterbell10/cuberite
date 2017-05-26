@@ -42,12 +42,6 @@ public:
 	/** Search horizontally adjacent blocks for neighbouring chests of the same type and links them together. */
 	void ScanNeighbours();
 
-	/** Opens a new chest window where this is the primary chest and any neighbour is the secondary. */
-	void OpenNewWindow();
-
-	/** Forces any players to close the owned window. */
-	void DestroyWindow();
-
 	/** Returns true if the chest should not be accessible by players. */
 	bool IsBlocked();
 
@@ -58,6 +52,9 @@ public:
 	void SetNumberOfPlayers(int a_NumActivePlayers) { m_NumActivePlayers = a_NumActivePlayers; }
 
 private:
+
+	/** Creates a new chest window where this is the primary chest and any neighbour is the secondary. */
+	virtual std::shared_ptr<cWindow> NewWindow(void) override;
 
 	/** Number of players who currently have this chest open */
 	int m_NumActivePlayers;
@@ -72,7 +69,7 @@ private:
 		ASSERT(a_Grid == &m_Contents);
 		if (m_World != nullptr)
 		{
-			cWindow * Window = GetWindow();
+			auto Window = GetWindow();
 			if (
 				(Window == nullptr) &&
 				(m_Neighbour != nullptr)

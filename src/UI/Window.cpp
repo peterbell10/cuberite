@@ -31,7 +31,6 @@ cWindow::cWindow(WindowType a_WindowType, const AString & a_WindowTitle) :
 	m_WindowID(static_cast<char>((++m_WindowIDCounter) % 127)),
 	m_WindowType(a_WindowType),
 	m_WindowTitle(a_WindowTitle),
-	m_IsDestroyed(false),
 	m_Owner(nullptr)
 {
 	// The window ID is signed in protocol 1.7, unsigned in protocol 1.8. Keep out of trouble by using only 7 bits:
@@ -42,6 +41,8 @@ cWindow::cWindow(WindowType a_WindowType, const AString & a_WindowTitle) :
 	{
 		m_WindowID = 0;
 	}
+
+	LOGD("Creating window #%d", m_WindowID);
 }
 
 
@@ -50,11 +51,18 @@ cWindow::cWindow(WindowType a_WindowType, const AString & a_WindowTitle) :
 
 cWindow::~cWindow()
 {
-	for (cSlotAreas::iterator itr = m_SlotAreas.begin(), end = m_SlotAreas.end(); itr != end; ++itr)
+	if (m_Owner)
 	{
-		delete *itr;
+		m_Owner->CloseWindow();
+	}
+
+	for (auto & Slot : m_SlotAreas)
+	{
+		delete Slot;
 	}
 	m_SlotAreas.clear();
+
+	LOGD("Destroying window #%d", m_WindowID);
 }
 
 
@@ -326,15 +334,6 @@ bool cWindow::ClosedByPlayer(cPlayer & a_Player, bool a_CanRefuse)
 		}  // for itr - m_SlotAreas[]
 
 		m_OpenedBy.remove(&a_Player);
-
-		if ((m_WindowType != wtInventory) && m_OpenedBy.empty())
-		{
-			Destroy();
-		}
-	}
-	if (m_IsDestroyed)
-	{
-		delete this;
 	}
 
 	return true;
@@ -347,12 +346,12 @@ bool cWindow::ClosedByPlayer(cPlayer & a_Player, bool a_CanRefuse)
 void cWindow::OwnerDestroyed()
 {
 	m_Owner = nullptr;
-	// Close window for each player. Note that the last one needs special handling
-	while (m_OpenedBy.size() > 1)
+	// Close window for each player. Note that we are kept alive by the owner
+	for (auto Player : m_OpenedBy)
 	{
-		(*m_OpenedBy.begin())->CloseWindow();
+		Player->CloseWindow(false);
 	}
-	(*m_OpenedBy.begin())->CloseWindow();
+	m_OpenedBy.clear();
 }
 
 
@@ -484,20 +483,6 @@ void cWindow::SendSlot(cPlayer & a_Player, cSlotArea * a_SlotArea, int a_Relativ
 	a_Player.GetClientHandle()->SendInventorySlot(
 		m_WindowID, static_cast<short>(a_RelativeSlotNum + SlotBase), *(a_SlotArea->GetSlot(a_RelativeSlotNum, a_Player))
 	);
-}
-
-
-
-
-
-void cWindow::Destroy(void)
-{
-	if (m_Owner != nullptr)
-	{
-		m_Owner->CloseWindow();
-		m_Owner = nullptr;
-	}
-	m_IsDestroyed = true;
 }
 
 

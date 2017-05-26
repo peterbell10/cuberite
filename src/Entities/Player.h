@@ -223,13 +223,13 @@ public:
 	@deprecated Use SetSpeed instead. */
 	void ForceSetSpeed(const Vector3d & a_Speed);  // tolua_export
 
-	cWindow * GetWindow(void) { return m_CurrentWindow; }  // tolua_export
-	const cWindow * GetWindow(void) const { return m_CurrentWindow; }
+	      cWindow * GetWindow(void)       { return m_CurrentWindow.get(); }  // tolua_export
+	const cWindow * GetWindow(void) const { return m_CurrentWindow.get(); }
 
 	// tolua_begin
 
 	/** Opens the specified window; closes the current one first using CloseWindow() */
-	void OpenWindow(cWindow & a_Window);
+	void OpenWindow(std::shared_ptr<cWindow> a_Window);
 
 	/** Closes the current window, resets current window to m_InventoryWindow. A plugin may refuse the closing if a_CanRefuse is true */
 	void CloseWindow(bool a_CanRefuse = true);
@@ -606,8 +606,8 @@ protected:
 	/** An item grid that stores the player specific enderchest contents */
 	cItemGrid m_EnderChestContents;
 
-	cWindow * m_CurrentWindow;
-	cWindow * m_InventoryWindow;
+	std::shared_ptr<cWindow> m_CurrentWindow;
+	std::shared_ptr<cWindow> m_InventoryWindow;
 
 	/** The player's last saved bed position */
 	Vector3i m_LastBedPos;

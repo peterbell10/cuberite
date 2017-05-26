@@ -136,7 +136,6 @@ public:
 
 protected:
 	cItemGrid m_Contents;
-	void OpenNewWindow(void);
 	virtual void Destroyed() override;
 
 	// cItemGrid::cListener overrides:
@@ -146,9 +145,10 @@ protected:
 		ASSERT(a_Grid == &m_Contents);
 		if (m_World != nullptr)
 		{
-			if (GetWindow() != nullptr)
+			auto Window = GetWindow();
+			if (Window != nullptr)
 			{
-				GetWindow()->BroadcastWholeWindow();
+				Window->BroadcastWholeWindow();
 			}
 
 			m_World->MarkChunkDirty(GetChunkX(), GetChunkZ());
@@ -157,6 +157,9 @@ protected:
 
 	// cEntity overrides:
 	virtual void OnRightClicked(cPlayer & a_Player) override;
+private:
+	/** Creates a new window for this minecart. */
+	virtual std::shared_ptr<cWindow> NewWindow(void) override;
 } ;
 
 

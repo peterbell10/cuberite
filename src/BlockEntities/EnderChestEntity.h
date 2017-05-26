@@ -21,7 +21,6 @@ public:
 	BLOCKENTITY_PROTODEF(cEnderChestEntity)
 
 	cEnderChestEntity(int a_BlockX, int a_BlockY, int a_BlockZ, cWorld * a_World);
-	virtual ~cEnderChestEntity() override;
 
 	// cBlockEntity overrides:
 	virtual bool UsedBy(cPlayer * a_Player) override;
@@ -30,8 +29,9 @@ public:
 	static void LoadFromJson(const Json::Value & a_Value, cItemGrid & a_Grid);
 	static void SaveToJson(Json::Value & a_Value, const cItemGrid & a_Grid);
 
-	/** Opens a new enderchest window for this enderchest */
-	void OpenNewWindow(void);
+private:
+	/** Creates a new enderchest window for this enderchest */
+	virtual std::shared_ptr<cWindow> NewWindow(void) override;
 } ;  // tolua_export
 
 

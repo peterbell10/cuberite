@@ -99,9 +99,10 @@ bool cBeaconEntity::SetPrimaryEffect(cEntityEffect::eType a_Effect)
 	m_PrimaryEffect = a_Effect;
 
 	// Send window update:
-	if (GetWindow() != nullptr)
+	auto Window = GetWindow();
+	if (Window != nullptr)
 	{
-		GetWindow()->SetProperty(1, m_PrimaryEffect);
+		Window->SetProperty(1, m_PrimaryEffect);
 	}
 	return true;
 }
@@ -121,9 +122,10 @@ bool cBeaconEntity::SetSecondaryEffect(cEntityEffect::eType a_Effect)
 	m_SecondaryEffect = a_Effect;
 
 	// Send window update:
-	if (GetWindow() != nullptr)
+	auto Window = GetWindow();
+	if (Window != nullptr)
 	{
-		GetWindow()->SetProperty(2, m_SecondaryEffect);
+		Window->SetProperty(2, m_SecondaryEffect);
 	}
 	return true;
 }
@@ -186,9 +188,10 @@ void cBeaconEntity::UpdateBeacon(void)
 	if (m_BeaconLevel != OldBeaconLevel)
 	{
 		// Send window update:
-		if (GetWindow() != nullptr)
+		auto Window = GetWindow();
+		if (Window != nullptr)
 		{
-			GetWindow()->SetProperty(0, m_BeaconLevel);
+			Window->SetProperty(0, m_BeaconLevel);
 		}
 	}
 
@@ -285,22 +288,16 @@ bool cBeaconEntity::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 
 bool cBeaconEntity::UsedBy(cPlayer * a_Player)
 {
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenWindow(new cBeaconWindow(m_PosX, m_PosY, m_PosZ, this));
-		Window = GetWindow();
-	}
+	return OpenWindow(a_Player, false);
+}
 
-	if (Window != nullptr)
-	{
-		// if (a_Player->GetWindow() != Window)
-		// -> Because mojang doesn't send a 'close window' packet when you click the cancel button in the beacon inventory ...
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
-	return true;
+
+
+
+
+std::shared_ptr<cWindow> cBeaconEntity::NewWindow()
+{
+	return std::make_shared<cBeaconWindow>(m_PosX, m_PosY, m_PosZ, this);
 }
 
 

@@ -82,7 +82,6 @@ protected:
 	// cWindow overrides:
 	virtual void OpenedByPlayer(cPlayer & a_Player) override;
 	virtual bool ClosedByPlayer(cPlayer & a_Player, bool a_CanRefuse) override;
-	virtual void Destroy(void) override;
 	virtual void DistributeStack(cItem & a_ItemStack, int a_Slot, cPlayer & a_Player, cSlotArea * a_ClickedArea, bool a_ShouldApply) override;
 
 	// cItemGrid::cListener overrides:

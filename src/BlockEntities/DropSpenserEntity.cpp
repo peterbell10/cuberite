@@ -25,20 +25,6 @@ cDropSpenserEntity::cDropSpenserEntity(BLOCKTYPE a_BlockType, int a_BlockX, int 
 
 
 
-cDropSpenserEntity::~cDropSpenserEntity()
-{
-	// Tell window its owner is destroyed
-	cWindow * Window = GetWindow();
-	if (Window != nullptr)
-	{
-		Window->OwnerDestroyed();
-	}
-}
-
-
-
-
-
 void cDropSpenserEntity::AddDropSpenserDir(int & a_BlockX, int & a_BlockY, int & a_BlockZ, NIBBLETYPE a_Direction)
 {
 	switch (a_Direction & E_META_DROPSPENSER_FACING_MASK)
@@ -142,21 +128,16 @@ void cDropSpenserEntity::SendTo(cClientHandle & a_Client)
 
 bool cDropSpenserEntity::UsedBy(cPlayer * a_Player)
 {
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenWindow(new cDropSpenserWindow(m_PosX, m_PosY, m_PosZ, this));
-		Window = GetWindow();
-	}
+	return OpenWindow(a_Player);
+}
 
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
-	return true;
+
+
+
+
+std::shared_ptr<cWindow> cDropSpenserEntity::NewWindow()
+{
+	return std::make_shared<cDropSpenserWindow>(m_PosX, m_PosY, m_PosZ, this);
 }
 
 

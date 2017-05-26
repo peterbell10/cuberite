@@ -158,18 +158,6 @@ bool cLuaWindow::ClosedByPlayer(cPlayer & a_Player, bool a_CanRefuse)
 
 
 
-void cLuaWindow::Destroy(void)
-{
-	Super::Destroy();
-
-	// Lua will take care of this object, it will garbage-collect it, so we must not delete it!
-	m_IsDestroyed = false;
-}
-
-
-
-
-
 void cLuaWindow::DistributeStack(cItem & a_ItemStack, int a_Slot, cPlayer & a_Player, cSlotArea * a_ClickedArea, bool a_ShouldApply)
 {
 	cSlotAreas Areas;

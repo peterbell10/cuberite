@@ -97,7 +97,7 @@ cPlayer::cPlayer(cClientHandlePtr a_Client, const AString & a_PlayerName) :
 	m_IsSwimming = false;
 	m_IsSubmerged = false;
 
-	m_InventoryWindow = new cInventoryWindow(*this);
+	m_InventoryWindow = std::make_shared<cInventoryWindow>(*this);
 	m_CurrentWindow = m_InventoryWindow;
 	m_InventoryWindow->OpenedByPlayer(*this);
 
@@ -189,9 +189,6 @@ cPlayer::~cPlayer(void)
 	SaveToDisk();
 
 	m_ClientHandle = nullptr;
-
-	delete m_InventoryWindow;
-	m_InventoryWindow = nullptr;
 
 	LOGD("Player %p deleted", static_cast<void *>(this));
 }
@@ -1310,15 +1307,17 @@ cTeam * cPlayer::UpdateTeam(void)
 
 
 
-void cPlayer::OpenWindow(cWindow & a_Window)
+void cPlayer::OpenWindow(std::shared_ptr<cWindow> a_Window)
 {
-	if (&a_Window != m_CurrentWindow)
+	ASSERT(a_Window != nullptr);
+	if (a_Window != m_CurrentWindow)
 	{
 		CloseWindow(false);
 	}
-	a_Window.OpenedByPlayer(*this);
-	m_CurrentWindow = &a_Window;
-	a_Window.SendWholeWindow(*GetClientHandle());
+
+	a_Window->OpenedByPlayer(*this);
+	m_CurrentWindow = std::move(a_Window);
+	m_CurrentWindow->SendWholeWindow(*GetClientHandle());
 }
 
 
@@ -1537,7 +1536,7 @@ void cPlayer::SetCapabilities()
 		SetCanFly(true);
 
 		// Clear the current dragging item of the player
-		if (GetWindow() != nullptr)
+		if (m_CurrentWindow != nullptr)
 		{
 			m_DraggingItem.Empty();
 			GetClientHandle()->SendInventorySlot(-1, -1, m_DraggingItem);

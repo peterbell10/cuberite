@@ -40,7 +40,6 @@ public:
 	BLOCKENTITY_PROTODEF(cDropSpenserEntity)
 
 	cDropSpenserEntity(BLOCKTYPE a_BlockType, int a_BlockX, int a_BlockY, int a_BlockZ, cWorld * a_World);
-	virtual ~cDropSpenserEntity() override;
 
 	// cBlockEntity overrides:
 	virtual bool Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk) override;
@@ -68,6 +67,9 @@ protected:
 
 	/** Helper function, drops one item from the specified slot (like a dropper) */
 	void DropFromSlot(cChunk & a_Chunk, int a_SlotNum);
+
+	/** Creates a new window for this dropspenser. */
+	virtual std::shared_ptr<cWindow> NewWindow() override;
 } ;  // tolua_export
 
 

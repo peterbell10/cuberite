@@ -2,7 +2,9 @@
 
 #include "../BlockEntities/BlockEntity.h"
 #include "../Entities/Entity.h"
+#include "../Entities/Player.h"
 #include "Window.h"
+
 
 /* Being a descendant of cWindowOwner means that the class can own one window. That window can be
 queried, opened by other players, closed by players and finally destroyed.
@@ -17,36 +19,71 @@ for entities / players in motion to close their windows when they get too far aw
 class cWindowOwner
 {
 public:
-	cWindowOwner() :
-		m_Window(nullptr)
+	cWindowOwner()
 	{
 	}
 
 	virtual ~cWindowOwner()
 	{
+		DestroyWindow();
 	}
 
+
+	/** Forcefully close the window for all players. */
+	void DestroyWindow()
+	{
+		auto Window = m_Window.lock();
+		if (Window != nullptr)
+		{
+			Window->OwnerDestroyed();
+		}
+		m_Window.reset();
+	}
+
+	/** Called by window destructor to ensure no unnecessary weak refs are held. (Would prevents some deallocations) */
 	void CloseWindow(void)
 	{
-		m_Window = nullptr;
+		m_Window.reset();
 	}
 
-	void OpenWindow(cWindow * a_Window)
+	bool OpenWindow(cPlayer * a_Player, bool a_Force = false)
 	{
-		m_Window = a_Window;
-		m_Window->SetOwner(this);
+		// If the window is not created, open it anew:
+		auto Window = GetWindow();
+		if (Window == nullptr)
+		{
+			Window = NewWindow();
+			if (Window == nullptr)
+			{
+				return false;
+			}
+
+			m_Window = Window;
+			Window->SetOwner(this);
+		}
+
+		// Open the window for the player
+		if (a_Force || (a_Player->GetWindow() != Window.get()))
+		{
+			a_Player->OpenWindow(Window);
+		}
+		return true;
 	}
 
-	cWindow * GetWindow(void) const
+	std::shared_ptr<cWindow> GetWindow(void)
 	{
-		return m_Window;
+		return m_Window.lock();
 	}
 
 	/** Returns the block position at which the element owning the window is */
 	virtual Vector3i GetBlockPos(void) = 0;
 
 private:
-	cWindow * m_Window;
+
+	/** Called by OpenWindow whenever m_Window is expired and a new window is needed. */
+	virtual std::shared_ptr<cWindow> NewWindow() = 0;
+
+	std::weak_ptr<cWindow> m_Window;
 };
 
 

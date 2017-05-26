@@ -42,39 +42,23 @@ cFurnaceEntity::cFurnaceEntity(int a_BlockX, int a_BlockY, int a_BlockZ, BLOCKTY
 
 
 
-cFurnaceEntity::~cFurnaceEntity()
+bool cFurnaceEntity::UsedBy(cPlayer * a_Player)
 {
-	// Tell window its owner is destroyed
-	cWindow * Window = GetWindow();
-	if (Window != nullptr)
+	if (!OpenWindow(a_Player))
 	{
-		Window->OwnerDestroyed();
+		return false;
 	}
+
+	UpdateProgressBars(true);
+	return true;
 }
 
 
 
 
-
-bool cFurnaceEntity::UsedBy(cPlayer * a_Player)
+std::shared_ptr<cWindow> cFurnaceEntity::NewWindow()
 {
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenWindow(new cFurnaceWindow(m_PosX, m_PosY, m_PosZ, this));
-		Window = GetWindow();
-	}
-
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
-
-	UpdateProgressBars(true);
-	return true;
+	return std::make_shared<cFurnaceWindow>(m_PosX, m_PosY, m_PosZ, this);
 }
 
 
@@ -146,7 +130,7 @@ void cFurnaceEntity::SendTo(cClientHandle & a_Client)
 
 void cFurnaceEntity::BroadcastProgress(short a_ProgressbarID, short a_Value)
 {
-	cWindow * Window = GetWindow();
+	auto Window = GetWindow();
 	if (Window != nullptr)
 	{
 		Window->SetProperty(a_ProgressbarID, a_Value);

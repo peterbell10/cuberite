@@ -38,8 +38,6 @@ public:
 	/** Constructor used for normal operation */
 	cFurnaceEntity(int a_BlockX, int a_BlockY, int a_BlockZ, BLOCKTYPE a_BlockType, NIBBLETYPE a_BlockMeta, cWorld * a_World);
 
-	virtual ~cFurnaceEntity() override;
-
 	// cBlockEntity overrides:
 	virtual void SendTo(cClientHandle & a_Client) override;
 	virtual bool Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk) override;
@@ -168,6 +166,9 @@ protected:
 	// cItemGrid::cListener overrides:
 	virtual void OnSlotChanged(cItemGrid * a_ItemGrid, int a_SlotNum) override;
 
+private:
+	/** Creates a new window for this furnace. */
+	virtual std::shared_ptr<cWindow> NewWindow() override;
 } ;  // tolua_export
 
 

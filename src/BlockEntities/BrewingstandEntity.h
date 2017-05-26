@@ -144,6 +144,9 @@ protected:
 	// cItemGrid::cListener overrides:
 	virtual void OnSlotChanged(cItemGrid * a_ItemGrid, int a_SlotNum) override;
 
+private:
+	/** Creates a new window for this brewing stand. */
+	virtual std::shared_ptr<cWindow> NewWindow() override;
 } ;  // tolua_export
 
 

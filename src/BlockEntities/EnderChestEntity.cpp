@@ -22,19 +22,6 @@ cEnderChestEntity::cEnderChestEntity(int a_BlockX, int a_BlockY, int a_BlockZ, c
 
 
 
-cEnderChestEntity::~cEnderChestEntity()
-{
-	cWindow * Window = GetWindow();
-	if (Window != nullptr)
-	{
-		Window->OwnerDestroyed();
-	}
-}
-
-
-
-
-
 void cEnderChestEntity::SendTo(cClientHandle & a_Client)
 {
 	// Send a dummy "number of players with chest open" packet to make the chest visible:
@@ -53,32 +40,17 @@ bool cEnderChestEntity::UsedBy(cPlayer * a_Player)
 		// Obstruction, don't open
 		return false;
 	}
-	// If the window is not created, open it anew:
-	cWindow * Window = GetWindow();
-	if (Window == nullptr)
-	{
-		OpenNewWindow();
-		Window = GetWindow();
-	}
-
-	// Open the window for the player:
-	if (Window != nullptr)
-	{
-		if (a_Player->GetWindow() != Window)
-		{
-			a_Player->OpenWindow(*Window);
-		}
-	}
-	return true;
+		
+	return OpenWindow(a_Player);
 }
 
 
 
 
 
-void cEnderChestEntity::OpenNewWindow()
+std::shared_ptr<cWindow> cEnderChestEntity::NewWindow()
 {
-	OpenWindow(new cEnderChestWindow(this));
+	return std::make_shared<cEnderChestWindow>(this);
 }
 
 
