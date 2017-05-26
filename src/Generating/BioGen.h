@@ -49,7 +49,6 @@ class cBioGenCache :
 
 public:
 	cBioGenCache(cBiomeGenPtr a_BioGenToCache, size_t a_CacheSize);
-	virtual ~cBioGenCache() override;
 
 protected:
 
@@ -62,10 +61,13 @@ protected:
 		cChunkDef::BiomeMap m_BiomeMap;
 	} ;
 
+	using cIndexArray = std::unique_ptr<size_t[]>;
+	using cCacheArray = std::unique_ptr<sCacheData[]>;
+
 	// To avoid moving large amounts of data for the MRU behavior, we MRU-ize indices to an array of the actual data
-	size_t          m_CacheSize;
-	size_t *        m_CacheOrder;  // MRU-ized order, indices into m_CacheData array
-	sCacheData * m_CacheData;   // m_CacheData[m_CacheOrder[0]] is the most recently used
+	size_t      m_CacheSize;
+	cIndexArray m_CacheOrder;  // MRU-ized order, indices into m_CacheData array
+	cCacheArray m_CacheData;   // m_CacheData[m_CacheOrder[0]] is the most recently used
 
 	// Cache statistics
 	size_t m_NumHits;

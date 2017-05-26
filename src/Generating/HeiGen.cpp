@@ -105,8 +105,8 @@ void cHeiGenFlat::InitializeHeightGen(cIniFile & a_IniFile)
 cHeiGenCache::cHeiGenCache(cTerrainHeightGenPtr a_HeiGenToCache, size_t a_CacheSize) :
 	m_HeiGenToCache(a_HeiGenToCache),
 	m_CacheSize(a_CacheSize),
-	m_CacheOrder(new size_t[a_CacheSize]),
-	m_CacheData(new sCacheData[a_CacheSize]),
+	m_CacheOrder(cpp14::make_unique<size_t[]>(a_CacheSize)),
+	m_CacheData(cpp14::make_unique<sCacheData[]>(a_CacheSize)),
 	m_NumHits(0),
 	m_NumMisses(0),
 	m_TotalChain(0)
@@ -117,18 +117,6 @@ cHeiGenCache::cHeiGenCache(cTerrainHeightGenPtr a_HeiGenToCache, size_t a_CacheS
 		m_CacheData[i].m_ChunkX = 0x7fffffff;
 		m_CacheData[i].m_ChunkZ = 0x7fffffff;
 	}
-}
-
-
-
-
-
-cHeiGenCache::~cHeiGenCache()
-{
-	delete[] m_CacheData;
-	m_CacheData = nullptr;
-	delete[] m_CacheOrder;
-	m_CacheOrder = nullptr;
 }
 
 
@@ -158,10 +146,8 @@ void cHeiGenCache::GenHeightMap(int a_ChunkX, int a_ChunkZ, cChunkDef::HeightMap
 		auto Idx = m_CacheOrder[i];
 
 		// Move to front:
-		for (size_t j = i; j > 0; j--)
-		{
-			m_CacheOrder[j] = m_CacheOrder[j - 1];
-		}
+		auto first = m_CacheOrder.get();
+		std::move_backward(first, first + i, first + i + 1);
 		m_CacheOrder[0] = Idx;
 
 		// Use the cached data:
@@ -178,10 +164,8 @@ void cHeiGenCache::GenHeightMap(int a_ChunkX, int a_ChunkZ, cChunkDef::HeightMap
 
 	// Insert it as the first item in the MRU order:
 	auto Idx = m_CacheOrder[m_CacheSize - 1];
-	for (auto i = m_CacheSize - 1; i > 0; i--)
-	{
-		m_CacheOrder[i] = m_CacheOrder[i - 1];
-	}  // for i - m_CacheOrder[]
+	auto first = m_CacheOrder.get();
+	std::move_backward(first, first + m_CacheSize - 1, first + m_CacheSize);
 	m_CacheOrder[0] = Idx;
 	memcpy(m_CacheData[Idx].m_HeightMap, a_HeightMap, sizeof(a_HeightMap));
 	m_CacheData[Idx].m_ChunkX = a_ChunkX;

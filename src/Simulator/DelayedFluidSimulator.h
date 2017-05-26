@@ -35,10 +35,10 @@ public:
 	} ;
 
 	cDelayedFluidSimulatorChunkData(int a_TickDelay);
-	virtual ~cDelayedFluidSimulatorChunkData();
 
 	/** Slots, one for each delay tick, each containing the blocks to simulate */
-	cSlot * m_Slots;
+	using cSlotArray = std::unique_ptr<cSlot[]>;
+	cSlotArray m_Slots;
 } ;
 
 

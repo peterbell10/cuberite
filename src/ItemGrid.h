@@ -30,10 +30,9 @@ public:
 		virtual void OnSlotChanged(cItemGrid * a_ItemGrid, int a_SlotNum) = 0;
 	} ;
 	typedef std::vector<cListener *> cListeners;
+	using cItemArray = std::unique_ptr<cItem[]>;
 
 	cItemGrid(int a_Width, int a_Height);
-
-	~cItemGrid();
 
 	// tolua_begin
 	int GetWidth   (void) const { return m_Width; }
@@ -172,10 +171,10 @@ public:
 	// tolua_begin
 
 protected:
-	int     m_Width;
-	int     m_Height;
-	int     m_NumSlots;  // m_Width * m_Height, for easier validity checking in the access functions
-	cItem * m_Slots;     // x + m_Width * y
+	int        m_Width;
+	int        m_Height;
+	int        m_NumSlots;  // m_Width * m_Height, for easier validity checking in the access functions
+	cItemArray m_Slots;     // x + m_Width * y
 
 	cListeners       m_Listeners;    ///< Listeners which should be notified on slot changes; the pointers are not owned by this object
 	cCriticalSection m_CSListeners;  ///< CS that guards the m_Listeners against multi-thread access

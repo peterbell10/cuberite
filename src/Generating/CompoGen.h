@@ -115,8 +115,7 @@ class cCompoGenCache :
 	public cTerrainCompositionGen
 {
 public:
-	cCompoGenCache(cTerrainCompositionGenPtr a_Underlying, int a_CacheSize);  // Doesn't take ownership of a_Underlying
-	virtual ~cCompoGenCache() override;
+	cCompoGenCache(cTerrainCompositionGenPtr a_Underlying, size_t a_CacheSize);  // Doesn't take ownership of a_Underlying
 
 	// cTerrainCompositionGen override:
 	virtual void ComposeTerrain(cChunkDesc & a_ChunkDesc, const cChunkDesc::Shape & a_Shape) override;
@@ -134,11 +133,14 @@ protected:
 		cChunkDesc::BlockNibbleBytes m_BlockMetas;  // The metas are uncompressed, 1 meta per byte
 		cChunkDef::HeightMap         m_HeightMap;
 	} ;
+		
+	using cIndexArray = std::unique_ptr<size_t[]>;
+	using cCacheArray = std::unique_ptr<sCacheData[]>;
 
 	// To avoid moving large amounts of data for the MRU behavior, we MRU-ize indices to an array of the actual data
-	int          m_CacheSize;
-	int *        m_CacheOrder;  // MRU-ized order, indices into m_CacheData array
-	sCacheData * m_CacheData;   // m_CacheData[m_CacheOrder[0]] is the most recently used
+	size_t      m_CacheSize;
+	cIndexArray m_CacheOrder;  // MRU-ized order, indices into m_CacheData array
+	cCacheArray m_CacheData;   // m_CacheData[m_CacheOrder[0]] is the most recently used
 
 	// Cache statistics
 	int m_NumHits;

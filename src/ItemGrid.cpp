@@ -16,19 +16,9 @@ cItemGrid::cItemGrid(int a_Width, int a_Height) :
 	m_Width(a_Width),
 	m_Height(a_Height),
 	m_NumSlots(a_Width * a_Height),
-	m_Slots(new cItem[a_Width * a_Height]),
+	m_Slots(cpp14::make_unique<cItem[]>(a_Width * a_Height)),
 	m_IsInTriggerListeners(false)
 {
-}
-
-
-
-
-
-cItemGrid::~cItemGrid()
-{
-	delete[] m_Slots;
-	m_Slots = nullptr;
 }
 
 

@@ -326,10 +326,10 @@ public:
 
 	// Clients can use these for faster access to all blocktypes. Be careful though!
 	/** Returns the internal pointer to the block types */
-	BLOCKTYPE *  GetBlockTypes   (void) const { return m_BlockTypes; }
-	NIBBLETYPE * GetBlockMetas   (void) const { return m_BlockMetas; }     // NOTE: one byte per block!
-	NIBBLETYPE * GetBlockLight   (void) const { return m_BlockLight; }     // NOTE: one byte per block!
-	NIBBLETYPE * GetBlockSkyLight(void) const { return m_BlockSkyLight; }  // NOTE: one byte per block!
+	BLOCKTYPE *  GetBlockTypes   (void) const { return m_BlockTypes.get(); }
+	NIBBLETYPE * GetBlockMetas   (void) const { return m_BlockMetas.get(); }     // NOTE: one byte per block!
+	NIBBLETYPE * GetBlockLight   (void) const { return m_BlockLight.get(); }     // NOTE: one byte per block!
+	NIBBLETYPE * GetBlockSkyLight(void) const { return m_BlockSkyLight.get(); }  // NOTE: one byte per block!
 	size_t       GetBlockCount(void) const { return static_cast<size_t>(m_Size.x * m_Size.y * m_Size.z); }
 	int MakeIndex(int a_RelX, int a_RelY, int a_RelZ) const;
 
@@ -356,9 +356,6 @@ protected:
 		virtual void ChunkData(const cChunkData &  a_BlockTypes) override;
 	} ;
 
-	typedef NIBBLETYPE * NIBBLEARRAY;
-
-
 	Vector3i m_Origin;
 	Vector3i m_Size;
 
@@ -366,10 +363,13 @@ protected:
 	cBlockArea doesn't use this value in any way. */
 	Vector3i m_WEOffset;
 
-	BLOCKTYPE *  m_BlockTypes;
-	NIBBLETYPE * m_BlockMetas;     // Each meta is stored as a separate byte for faster access
-	NIBBLETYPE * m_BlockLight;     // Each light value is stored as a separate byte for faster access
-	NIBBLETYPE * m_BlockSkyLight;  // Each light value is stored as a separate byte for faster access
+	using cBlockArray = std::unique_ptr<BLOCKTYPE[]>;
+	using cNibbleArray = std::unique_ptr<NIBBLETYPE[]>;
+
+	cBlockArray  m_BlockTypes;
+	cNibbleArray m_BlockMetas;     // Each meta is stored as a separate byte for faster access
+	cNibbleArray m_BlockLight;     // Each light value is stored as a separate byte for faster access
+	cNibbleArray m_BlockSkyLight;  // Each light value is stored as a separate byte for faster access
 
 	/** Clears the data stored and prepares a fresh new block area with the specified dimensions */
 	bool SetSize(int a_SizeX, int a_SizeY, int a_SizeZ, int a_DataTypes);
@@ -384,11 +384,11 @@ protected:
 
 	// Crop helpers:
 	void CropBlockTypes(int a_AddMinX, int a_SubMaxX, int a_AddMinY, int a_SubMaxY, int a_AddMinZ, int a_SubMaxZ);
-	void CropNibbles   (NIBBLEARRAY & a_Array, int a_AddMinX, int a_SubMaxX, int a_AddMinY, int a_SubMaxY, int a_AddMinZ, int a_SubMaxZ);
+	void CropNibbles   (cNibbleArray & a_Array, int a_AddMinX, int a_SubMaxX, int a_AddMinY, int a_SubMaxY, int a_AddMinZ, int a_SubMaxZ);
 
 	// Expand helpers:
 	void ExpandBlockTypes(int a_SubMinX, int a_AddMaxX, int a_SubMinY, int a_AddMaxY, int a_SubMinZ, int a_AddMaxZ);
-	void ExpandNibbles   (NIBBLEARRAY & a_Array, int a_SubMinX, int a_AddMaxX, int a_SubMinY, int a_AddMaxY, int a_SubMinZ, int a_AddMaxZ);
+	void ExpandNibbles   (cNibbleArray & a_Array, int a_SubMinX, int a_AddMaxX, int a_SubMinY, int a_AddMaxY, int a_SubMinZ, int a_AddMaxZ);
 
 	/** Sets the specified datatypes at the specified location. */
 	void RelSetData(
