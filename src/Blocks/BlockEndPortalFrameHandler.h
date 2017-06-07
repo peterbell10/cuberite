@@ -13,15 +13,15 @@ class cBlockEndPortalFrameHandler :
 	E_META_END_PORTAL_FRAME_XM
 	>
 {
-	using super = cMetaRotator<cBlockHandler, 0x03,
+	using Super = cMetaRotator<cBlockHandler, 0x03,
 		E_META_END_PORTAL_FRAME_ZM,
 		E_META_END_PORTAL_FRAME_XP,
 		E_META_END_PORTAL_FRAME_ZP,
 		E_META_END_PORTAL_FRAME_XM
 	>;
 public:
-	cBlockEndPortalFrameHandler()
-		: super(E_BLOCK_END_PORTAL_FRAME)
+	cBlockEndPortalFrameHandler() :
+		Super(E_BLOCK_END_PORTAL_FRAME)
 	{
 	}
 

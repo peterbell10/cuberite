@@ -10,10 +10,10 @@
 class cItemEyeOfEnderHandler :
 	public cItemHandler
 {
-	using super = cItemHandler;
+	using Super = cItemHandler;
 public:
 	cItemEyeOfEnderHandler() :
-		super(E_ITEM_EYE_OF_ENDER)
+		Super(E_ITEM_EYE_OF_ENDER)
 	{
 	}
 
@@ -32,8 +32,9 @@ public:
 			NIBBLETYPE ClickedBlockMeta = 0;
 			VERIFY(a_World->GetBlockTypeMeta(a_BlockX, a_BlockY, a_BlockZ, ClickedBlock, ClickedBlockMeta));
 			
-			if ((ClickedBlock != E_BLOCK_END_PORTAL_FRAME) ||
-			    ((ClickedBlockMeta & 0x04) == E_META_END_PORTAL_EYE)  // Eye in the frame already
+			if (
+				(ClickedBlock != E_BLOCK_END_PORTAL_FRAME) ||
+			    ((ClickedBlockMeta & E_META_END_PORTAL_EYE) != 0)  // Eye in the frame already
 			)
 			{
 				return true;
@@ -117,8 +118,9 @@ private:
 
 
 
-	/** Returns true if the edges of the portal about Centre are eye filled portal frames and no portal frames are in the 3x3 area around the centre.*/
-	bool IsPortalComplete(cWorld * a_World, const Vector3i& a_Centre)
+	/** Returns true if the edges of the portal about Centre are eye filled portal frames and no portal frames are in the 3x3 area around the centre.
+	Note that the centre blocks don't need to be air, even bedrock should be overwritten by portal blocks. */
+	bool IsPortalComplete(cWorld * a_World, Vector3i a_Centre)
 	{
 		// Check central blocks aren't portal frames
 		for (int RelX = -1; RelX != 2; ++RelX)
@@ -137,35 +139,31 @@ private:
 		{
 			{
 				{ -1,  0,  2 },
-				{ 0,  0,  2 },
-				{ 1,  0,  2 },
+				{  0,  0,  2 },
+				{  1,  0,  2 },
 				{ -1,  0, -2 },
-				{ 0,  0, -2 },
-				{ 1,  0, -2 },
-				{ 2,  0, -1 },
-				{ 2,  0,  0 },
-				{ 2,  0,  1 },
+				{  0,  0, -2 },
+				{  1,  0, -2 },
+				{  2,  0, -1 },
+				{  2,  0,  0 },
+				{  2,  0,  1 },
 				{ -2,  0, -1 },
 				{ -2,  0,  0 },
 				{ -2,  0,  1 },
 			}
 		};
 
-		for (auto Pos : PortalCheck)
+		return std::all_of(PortalCheck.cbegin(), PortalCheck.cend(), [a_Centre, a_World](Vector3i a_Pos)
 		{
 			BLOCKTYPE Block;
 			NIBBLETYPE Meta;
-			Pos += a_Centre;
-			a_World->GetBlockTypeMeta(Pos.x, Pos.y, Pos.z, Block, Meta);
-			if ((Block != E_BLOCK_END_PORTAL_FRAME) ||
-				((Meta & 0x04) != E_META_END_PORTAL_EYE)
-				)
-			{
-				return false;
-			}
-		}
-
-		return true;
+			a_Pos += a_Centre;
+			a_World->GetBlockTypeMeta(a_Pos.x, a_Pos.y, a_Pos.z, Block, Meta);
+			return (
+				(Block == E_BLOCK_END_PORTAL_FRAME) &&   //Is an end portal frame
+				((Meta & E_META_END_PORTAL_EYE) != 0)  // and must have an eye
+			);
+		});
 	}
 };
 

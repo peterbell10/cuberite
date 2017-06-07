@@ -28,7 +28,7 @@
 #include "BlockDropSpenser.h"
 #include "BlockEnchantmentTable.h"
 #include "BlockEnderchest.h"
-#include "BlockEndProtalFrameHandler.h"
+#include "BlockEndPortalFrameHandler.h"
 #include "BlockEntity.h"
 #include "BlockFarmland.h"
 #include "BlockFence.h"

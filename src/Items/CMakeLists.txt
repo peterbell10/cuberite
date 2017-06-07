@@ -23,6 +23,7 @@ SET (HDRS
 	ItemDoor.h
 	ItemDye.h
 	ItemEmptyMap.h
+	ItemEyeOfEnder.h
 	ItemFishingRod.h
 	ItemFlowerPot.h
 	ItemFood.h
