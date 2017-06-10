@@ -450,7 +450,10 @@ typename std::enable_if<std::is_arithmetic<T>::value, C>::type CeilC(T a_Value)
 
 namespace cpp14
 {
-	// Non-array types which just need new
+#if __cpp_lib_make_unique
+	using std::make_unique;
+#else
+	// Non-array types which just need new T
 	template <class T, class... Args>
 	typename std::enable_if<!std::is_array<T>::value,
 		std::unique_ptr<T>>::type make_unique(Args&&... args)
@@ -458,7 +461,7 @@ namespace cpp14
 		return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 	}
 
-	// Array types which need new[] and must be default constructed
+	// Array types which need new T[] and are default constructed
 	template <class T>
 	typename std::enable_if<std::is_array<T>::value,
 		std::unique_ptr<T>>::type make_unique(size_t a_Size)
@@ -470,6 +473,7 @@ namespace cpp14
 	// Array types cannot have known length (i.e. Gadget[] is fine but Widget[10] is disallowed)
 	template <class T, class... Args>
 	typename std::enable_if<(std::extent<T>::value != 0)>::type make_unique(Args&&...) = delete;
+#endif  // __cpp_lib_make_unique
 }
 
 // a tick is 50 ms
