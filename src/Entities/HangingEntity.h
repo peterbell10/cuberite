@@ -50,11 +50,7 @@ protected:
 
 
 	virtual void SpawnOn(cClientHandle & a_ClientHandle) override;
-	virtual void Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk) override
-	{
-		UNUSED(a_Dt);
-		UNUSED(a_Chunk);
-	}
+	virtual void Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk) override;	
 
 
 	/** Converts protocol hanging item facing to eBlockFace values */
