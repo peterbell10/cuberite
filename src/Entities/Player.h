@@ -15,6 +15,7 @@
 class cWindow;
 class cClientHandle;
 class cTeam;
+class cLuaWindow;
 
 
 
@@ -225,11 +226,14 @@ public:
 
 	      cWindow * GetWindow(void)       { return m_CurrentWindow.get(); }  // tolua_export
 	const cWindow * GetWindow(void) const { return m_CurrentWindow.get(); }
+	
+	/** Opens the specified window; closes the current one first using CloseWindow() */
+	void OpenWindow(std::shared_ptr<cWindow> a_Window);
 
 	// tolua_begin
 
-	/** Opens the specified window; closes the current one first using CloseWindow() */
-	void OpenWindow(std::shared_ptr<cWindow> a_Window);
+	// TODO: Figure out how to open normal windows from lua
+	void OpenWindow(cLuaWindow & a_Window);
 
 	/** Closes the current window, resets current window to m_InventoryWindow. A plugin may refuse the closing if a_CanRefuse is true */
 	void CloseWindow(bool a_CanRefuse = true);

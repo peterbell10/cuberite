@@ -32,6 +32,8 @@
 #include "../IniFile.h"
 #include "json/json.h"
 
+#include "../Bindings/LuaWindow.h"
+
 // 6000 ticks or 5 minutes
 #define PLAYER_INVENTORY_SAVE_INTERVAL 6000
 
@@ -1318,6 +1320,15 @@ void cPlayer::OpenWindow(std::shared_ptr<cWindow> a_Window)
 	a_Window->OpenedByPlayer(*this);
 	m_CurrentWindow = std::move(a_Window);
 	m_CurrentWindow->SendWholeWindow(*GetClientHandle());
+}
+
+
+
+
+
+void cPlayer::OpenWindow(cLuaWindow & a_Window)
+{
+	OpenWindow(a_Window.shared_from_this());
 }
 
 

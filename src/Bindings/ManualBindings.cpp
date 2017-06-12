@@ -2958,7 +2958,8 @@ static int tolua_cLuaWindow_new(lua_State * tolua_S)
 	}
 
 	// Create the window and return it:
-	L.Push(new cLuaWindow(L, static_cast<cLuaWindow::WindowType>(windowType), slotsX, slotsY, title));
+	auto Window = cLuaWindow::Create(L, static_cast<cLuaWindow::WindowType>(windowType), slotsX, slotsY, title);
+	L.Push(Window.get());
 	return 1;
 }
 
@@ -2994,9 +2995,22 @@ static int tolua_cLuaWindow_new_local(lua_State * tolua_S)
 	}
 
 	// Create the window, register it for GC and return it:
-	L.Push(new cLuaWindow(L, static_cast<cLuaWindow::WindowType>(windowType), slotsX, slotsY, title));
+	auto Window = cLuaWindow::Create(L, static_cast<cLuaWindow::WindowType>(windowType), slotsX, slotsY, title);
+	L.Push(Window.get());
 	tolua_register_gc(tolua_S, lua_gettop(tolua_S));
 	return 1;
+}
+
+
+
+
+
+static int tolua_cLuaWindow_collect(lua_State * tolua_S)
+{
+	auto self = reinterpret_cast<cLuaWindow*>(tolua_tousertype(tolua_S, 1, 0));
+	self->ClearRef();
+	LOGD("Clearing Lua reference for window #%d", self->GetWindowID());
+	return 0;
 }
 
 
@@ -4127,6 +4141,7 @@ void cManualBindings::Bind(lua_State * tolua_S)
 			tolua_function(tolua_S, "new",              tolua_cLuaWindow_new);
 			tolua_function(tolua_S, "new_local",        tolua_cLuaWindow_new_local);
 			tolua_function(tolua_S, ".call",            tolua_cLuaWindow_new_local);
+			tolua_function(tolua_S, ".collector",       tolua_cLuaWindow_collect);
 			tolua_function(tolua_S, "SetOnClosing",     tolua_SetObjectCallback<cLuaWindow, &cLuaWindow::SetOnClosing>);
 			tolua_function(tolua_S, "SetOnSlotChanged", tolua_SetObjectCallback<cLuaWindow, &cLuaWindow::SetOnSlotChanged>);
 		tolua_endmodule(tolua_S);

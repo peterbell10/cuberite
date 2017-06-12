@@ -17,7 +17,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // cLuaWindow:
 
-cLuaWindow::cLuaWindow(cLuaState & a_LuaState, cWindow::WindowType a_WindowType, int a_SlotsX, int a_SlotsY, const AString & a_Title) :
+cLuaWindow::cLuaWindow(make_shared_tag, cLuaState & a_LuaState, cWindow::WindowType a_WindowType, int a_SlotsX, int a_SlotsY, const AString & a_Title) :
 	Super(a_WindowType, a_Title),
 	m_Contents(a_SlotsX, a_SlotsY),
 	m_LuaState(a_LuaState.QueryCanonLuaState())
@@ -112,16 +112,10 @@ void cLuaWindow::SetOnSlotChanged(cLuaState::cCallbackPtr && a_OnSlotChanged)
 
 
 
-void cLuaWindow::OpenedByPlayer(cPlayer & a_Player)
+void cLuaWindow::ClearRef()
 {
-	// If the first player is opening the window, create a Lua Reference to the window object so that Lua will not GC it until the last player closes the window:
-	if (m_PlayerCount == 0)
-	{
-		m_LuaRef.CreateFromObject(*m_LuaState, this);
-	}
-
-	++m_PlayerCount;
-	Super::OpenedByPlayer(a_Player);
+	ASSERT(m_Self.get() == this);
+	m_Self.reset();
 }
 
 
@@ -142,13 +136,6 @@ bool cLuaWindow::ClosedByPlayer(cPlayer & a_Player, bool a_CanRefuse)
 			// The callback disagrees (the higher levels check the CanRefuse flag compliance)
 			return false;
 		}
-	}
-
-	// If the last player has closed the window, release the Lua reference, so that Lua may GC the object:
-	--m_PlayerCount;
-	if (m_PlayerCount == 0)
-	{
-		m_LuaRef.UnRef();
 	}
 
 	return Super::ClosedByPlayer(a_Player, a_CanRefuse);
