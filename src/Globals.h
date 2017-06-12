@@ -457,6 +457,16 @@ namespace cpp14
 	}
 }
 
+
+#ifdef __cpp_constexpr  // Has c++11 constexpr
+	#define CONSTEXPR_VAR constexpr
+	#define CONSTEXPR_FUN constexpr
+#else
+	#define CONSTEXPR_VAR static const
+	#define CONSTEXPR_FUN
+#endif  // __cpp_constexpr
+
+
 // a tick is 50 ms
 using cTickTime = std::chrono::duration<int,  std::ratio_multiply<std::chrono::milliseconds::period, std::ratio<50>>>;
 using cTickTimeLong = std::chrono::duration<Int64,  cTickTime::period>;

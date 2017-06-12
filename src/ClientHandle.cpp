@@ -462,6 +462,77 @@ bool cClientHandle::StreamNextChunk(void)
 	// Lock the list
 	cCSLock Lock(m_CSChunkLists);
 
+	struct cChunkWithPriority 
+	{
+		double m_Priority;
+		cChunkCoords m_Coords;
+	};
+	std::vector<cChunkWithPriority> Chunks;
+
+	CONSTEXPR_VAR double LOOK_DIR_WEIGHT = 1.0;
+	CONSTEXPR_VAR double DISTANCE_WEIGHT = 2.0;
+
+	// Calculate priorities for all chunks within view distance
+	for (int ChunkX = -m_CurrentViewDistance; ChunkX <= m_CurrentViewDistance; ++ChunkX)
+	{
+		for (int ChunkZ = -m_CurrentViewDistance; ChunkZ <= m_CurrentViewDistance; ++ChunkZ)
+		{
+			Vector3d ChunkDisplacement{ ChunkX + 0.0, 0.0, ChunkZ + 0.0 };
+			Vector3d ChunkDirection = ChunkDisplacement.NormalizeCopy();
+
+			double Priority = (
+				(LOOK_DIR_WEIGHT * std::fmin(1.0, ChunkDirection.Dot(LookVector))) +
+				(DISTANCE_WEIGHT * -(ChunkDisplacement.SqrLength() / (m_CurrentViewDistance * m_CurrentViewDistance)))
+			);
+			Chunks.push_back({ Priority, cChunkCoords{ ChunkPosX + ChunkX, ChunkPosZ + ChunkZ } });
+		}
+	}
+
+	CONSTEXPR_VAR int   HIGH_PRIO_LIMIT = 16;
+	CONSTEXPR_VAR int MEDIUM_PRIO_LIMIT = 32;
+
+	// Sort by descending loading priority
+	std::sort(Chunks.begin(), Chunks.end(), [](const cChunkWithPriority & a_LHS, const cChunkWithPriority & a_RHS)
+	{
+		return (a_LHS.m_Priority > a_RHS.m_Priority);
+	});
+	
+	// Find highest priority chunk not already loading or loaded
+	auto NextChunk = std::find_if(Chunks.begin(), Chunks.end(), [&](const cChunkWithPriority& a_Chunk)
+	{
+		return (
+			(m_ChunksToSend.find(a_Chunk.m_Coords) == m_ChunksToSend.end()) &&
+			(m_LoadedChunks.find(a_Chunk.m_Coords) == m_LoadedChunks.end())
+		);
+	});
+
+	if (NextChunk == Chunks.end())
+	{
+		// All chunks are loaded -> Sets the last loaded chunk coordinates to current coordinates
+		m_LastStreamedChunkX = ChunkPosX;
+		m_LastStreamedChunkZ = ChunkPosZ;
+		return true;
+	}
+
+	auto ChunkIdx = NextChunk - Chunks.begin();
+
+	cChunkSender::eChunkPriority Priority = (
+		(ChunkIdx < HIGH_PRIO_LIMIT) ?
+		cChunkSender::E_CHUNK_PRIORITY_HIGH :
+		(
+			(ChunkIdx < MEDIUM_PRIO_LIMIT) ?
+			cChunkSender::E_CHUNK_PRIORITY_MEDIUM :
+			cChunkSender::E_CHUNK_PRIORITY_LOW
+		)
+	);
+
+	// Unloaded chunk found -> Send it to the client.
+	Lock.Unlock();
+	StreamChunk(NextChunk->m_Coords.m_ChunkX, NextChunk->m_Coords.m_ChunkZ, Priority);
+	return false;
+	
+
+	/*
 	// High priority: Load the chunks that are in the view-direction of the player (with a radius of 3)
 	for (int Range = 0; Range < m_CurrentViewDistance; Range++)
 	{
@@ -538,11 +609,8 @@ bool cClientHandle::StreamNextChunk(void)
 			return false;
 		}
 	}
-
-	// All chunks are loaded -> Sets the last loaded chunk coordinates to current coordinates
-	m_LastStreamedChunkX = ChunkPosX;
-	m_LastStreamedChunkZ = ChunkPosZ;
-	return true;
+	*/
+	
 }
 
 
