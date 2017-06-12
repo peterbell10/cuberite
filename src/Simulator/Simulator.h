@@ -5,6 +5,7 @@
 
 class cWorld;
 class cChunk;
+class cChunkMap;
 
 
 
@@ -35,6 +36,9 @@ public:
 	/** Called when a block changes */
 	virtual void WakeUp(int a_BlockX, int a_BlockY, int a_BlockZ, cChunk * a_Chunk);
 
+	/** Called when a whole volume of blocks change. Not limited to single chunks.  */
+	virtual void WakeUpInArea(Vector3i a_Min, Vector3i a_Max, cChunk * a_Chunk);
+
 	virtual bool IsAllowedBlock(BLOCKTYPE a_BlockType) = 0;
 
 protected:
@@ -44,6 +48,11 @@ protected:
 	virtual void AddBlock(int a_BlockX, int a_BlockY, int a_BlockZ, cChunk * a_Chunk) = 0;
 
 	cWorld & m_World;
+
+private:
+
+	/** Calls AddBlock for all blocks within the cuboid (specified inclusively). */
+	void AddCuboid(Vector3i a_Min, Vector3i a_Max, cChunk * a_Chunk);
 } ;
 
 

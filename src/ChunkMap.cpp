@@ -759,40 +759,40 @@ void cChunkMap::WakeUpSimulators(int a_BlockX, int a_BlockY, int a_BlockZ)
 
 void cChunkMap::WakeUpSimulatorsInArea(int a_MinBlockX, int a_MaxBlockX, int a_MinBlockY, int a_MaxBlockY, int a_MinBlockZ, int a_MaxBlockZ)
 {
-	// Limit the Y coords:
-	a_MinBlockY = std::max(a_MinBlockY, 0);
-	a_MaxBlockY = std::min(a_MaxBlockY, cChunkDef::Height - 1);
-
 	cSimulatorManager * SimMgr = m_World->GetSimulatorManager();
 	int MinChunkX, MinChunkZ, MaxChunkX, MaxChunkZ;
 	cChunkDef::BlockToChunk(a_MinBlockX, a_MinBlockZ, MinChunkX, MinChunkZ);
 	cChunkDef::BlockToChunk(a_MaxBlockX, a_MaxBlockZ, MaxChunkX, MaxChunkZ);
 	cCSLock Lock(m_CSChunks);
-	for (int z = MinChunkZ; z <= MaxChunkZ; z++)
+
+	// Find a valid chunk in the area
+	cChunkPtr Chunk = nullptr;
+	for (int ChunkX = MinChunkX; ChunkX <= MaxChunkX; ++ChunkX)
 	{
-		int MinZ = std::max(a_MinBlockZ, z * cChunkDef::Width);
-		int MaxZ = std::min(a_MaxBlockZ, z * cChunkDef::Width + cChunkDef::Width - 1);
-		for (int x = MinChunkX; x <= MaxChunkX; x++)
+		for (int ChunkZ = MinChunkZ; ChunkZ <= MaxChunkZ; ++ChunkZ)
 		{
-			cChunkPtr Chunk = GetChunkNoGen(x, z);
-			if ((Chunk == nullptr) || !Chunk->IsValid())
+			Chunk = GetChunkNoGen(ChunkX, ChunkZ);
+			if ((Chunk != nullptr) && Chunk->IsValid())
 			{
-				continue;
+				break;
 			}
-			int MinX = std::max(a_MinBlockX, x * cChunkDef::Width);
-			int MaxX = std::min(a_MaxBlockX, x * cChunkDef::Width + cChunkDef::Width - 1);
-			for (int BlockY = a_MinBlockY; BlockY <= a_MaxBlockY; BlockY++)
-			{
-				for (int BlockZ = MinZ; BlockZ <= MaxZ; BlockZ++)
-				{
-					for (int BlockX = MinX; BlockX <= MaxX; BlockX++)
-					{
-						SimMgr->WakeUp(BlockX, BlockY, BlockZ, Chunk);
-					}  // for BlockX
-				}  // for BlockZ
-			}  // for BlockY
-		}  // for x - chunks
-	}  // for z = chunks
+			Chunk = nullptr;
+		}
+		if (Chunk != nullptr)
+		{
+			break;
+		}
+	}
+	if (Chunk == nullptr)
+	{
+		return;  // No chunks to simulate
+	}
+
+	SimMgr->WakeUpInArea(
+		{ a_MinBlockX, a_MinBlockY, a_MinBlockZ },
+		{ a_MaxBlockX, a_MaxBlockY, a_MaxBlockZ },
+		Chunk
+	);
 }
 
 

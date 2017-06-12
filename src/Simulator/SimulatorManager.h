@@ -37,6 +37,8 @@ public:
 
 	void WakeUp(int a_BlockX, int a_BlockY, int a_BlockZ, cChunk * a_Chunk);
 
+	void WakeUpInArea(Vector3i a_Min, Vector3i a_Max, cChunk * a_Chunk);
+
 	void RegisterSimulator(cSimulator * a_Simulator, int a_Rate);  // Takes ownership of the simulator object!
 
 protected:
