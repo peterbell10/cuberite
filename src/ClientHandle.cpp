@@ -438,7 +438,7 @@ void cClientHandle::Authenticate(const AString & a_Name, const AString & a_UUID,
 
 
 
-bool cClientHandle::StreamNextChunk(void)
+bool cClientHandle::StreamNextChunks(int a_NumChunks)
 {
 	if ((m_State < csAuthenticated) || (m_State >= csDestroying))
 	{
@@ -462,15 +462,15 @@ bool cClientHandle::StreamNextChunk(void)
 	// Lock the list
 	cCSLock Lock(m_CSChunkLists);
 
-	struct cChunkWithPriority 
+	struct cChunkWithWeight
 	{
-		double m_Priority;
+		double m_Weight;
 		cChunkCoords m_Coords;
 	};
-	std::vector<cChunkWithPriority> Chunks;
+	std::vector<cChunkWithWeight> Chunks;
 
 	CONSTEXPR_VAR double LOOK_DIR_WEIGHT = 1.0;
-	CONSTEXPR_VAR double DISTANCE_WEIGHT = 2.0;
+	CONSTEXPR_VAR double DISTANCE_WEIGHT = 3.0;
 
 	// Calculate priorities for all chunks within view distance
 	for (int ChunkX = -m_CurrentViewDistance; ChunkX <= m_CurrentViewDistance; ++ChunkX)
@@ -480,56 +480,81 @@ bool cClientHandle::StreamNextChunk(void)
 			Vector3d ChunkDisplacement{ ChunkX + 0.0, 0.0, ChunkZ + 0.0 };
 			Vector3d ChunkDirection = ChunkDisplacement.NormalizeCopy();
 
-			double Priority = (
+			double Weight = (
 				(LOOK_DIR_WEIGHT * std::fmin(1.0, ChunkDirection.Dot(LookVector))) +
 				(DISTANCE_WEIGHT * -(ChunkDisplacement.SqrLength() / (m_CurrentViewDistance * m_CurrentViewDistance)))
 			);
-			Chunks.push_back({ Priority, cChunkCoords{ ChunkPosX + ChunkX, ChunkPosZ + ChunkZ } });
+			Chunks.push_back({ Weight, cChunkCoords{ ChunkPosX + ChunkX, ChunkPosZ + ChunkZ } });
 		}
 	}
 
 	CONSTEXPR_VAR int   HIGH_PRIO_LIMIT = 16;
 	CONSTEXPR_VAR int MEDIUM_PRIO_LIMIT = 32;
 
-	// Sort by descending loading priority
-	std::sort(Chunks.begin(), Chunks.end(), [](const cChunkWithPriority & a_LHS, const cChunkWithPriority & a_RHS)
+	// Sort by descending loading weight
+	std::sort(Chunks.begin(), Chunks.end(), [](const cChunkWithWeight & a_LHS, const cChunkWithWeight & a_RHS)
 	{
-		return (a_LHS.m_Priority > a_RHS.m_Priority);
+		return (a_LHS.m_Weight > a_RHS.m_Weight);
 	});
 	
-	// Find highest priority chunk not already loading or loaded
-	auto NextChunk = std::find_if(Chunks.begin(), Chunks.end(), [&](const cChunkWithPriority& a_Chunk)
-	{
-		return (
-			(m_ChunksToSend.find(a_Chunk.m_Coords) == m_ChunksToSend.end()) &&
-			(m_LoadedChunks.find(a_Chunk.m_Coords) == m_LoadedChunks.end())
-		);
-	});
+	auto First = Chunks.begin();
+	auto NextChunk = First;
+	auto Last = Chunks.end();
 
-	if (NextChunk == Chunks.end())
+	struct cChunkWithPriority
+	{
+		cChunkSender::eChunkPriority m_Priority;
+		cChunkCoords m_Coords;
+	};
+
+	std::vector<cChunkWithPriority> Priorities;
+	bool AllStreamed = false;
+
+	for (int i = 0; i < a_NumChunks; ++i)
+	{
+		// Find highest priority chunk not already loading or loaded
+		NextChunk = std::find_if(NextChunk, Last, [&](const cChunkWithWeight& a_Chunk)
+		{
+			return (
+				(m_ChunksToSend.find(a_Chunk.m_Coords) == m_ChunksToSend.end()) &&
+				(m_LoadedChunks.find(a_Chunk.m_Coords) == m_LoadedChunks.end())
+			);
+		});
+
+		if (NextChunk == Last)
+		{
+			AllStreamed = true;
+			break;
+		}
+
+		auto ChunkIdx = NextChunk - First;
+
+		cChunkSender::eChunkPriority Priority = (
+			(ChunkIdx < HIGH_PRIO_LIMIT) ?
+			cChunkSender::E_CHUNK_PRIORITY_HIGH :
+			(
+				(ChunkIdx < MEDIUM_PRIO_LIMIT) ?
+				cChunkSender::E_CHUNK_PRIORITY_MEDIUM :
+				cChunkSender::E_CHUNK_PRIORITY_LOW
+			)
+		);
+
+		Priorities.push_back({ Priority, cChunkCoords{ NextChunk->m_Coords.m_ChunkX, NextChunk->m_Coords.m_ChunkZ } });
+	}
+
+	for (auto & ChunkPrio : Priorities)
+	{
+		StreamChunk(ChunkPrio.m_Coords.m_ChunkX, ChunkPrio.m_Coords.m_ChunkZ, ChunkPrio.m_Priority);
+	}
+	
+	if (AllStreamed)
 	{
 		// All chunks are loaded -> Sets the last loaded chunk coordinates to current coordinates
 		m_LastStreamedChunkX = ChunkPosX;
 		m_LastStreamedChunkZ = ChunkPosZ;
-		return true;
 	}
 
-	auto ChunkIdx = NextChunk - Chunks.begin();
-
-	cChunkSender::eChunkPriority Priority = (
-		(ChunkIdx < HIGH_PRIO_LIMIT) ?
-		cChunkSender::E_CHUNK_PRIORITY_HIGH :
-		(
-			(ChunkIdx < MEDIUM_PRIO_LIMIT) ?
-			cChunkSender::E_CHUNK_PRIORITY_MEDIUM :
-			cChunkSender::E_CHUNK_PRIORITY_LOW
-		)
-	);
-
-	// Unloaded chunk found -> Send it to the client.
-	Lock.Unlock();
-	StreamChunk(NextChunk->m_Coords.m_ChunkX, NextChunk->m_Coords.m_ChunkZ, Priority);
-	return false;
+	return AllStreamed;
 	
 
 	/*
@@ -2196,15 +2221,7 @@ void cClientHandle::Tick(float a_Dt)
 	if ((m_State >= csAuthenticated) && (m_State < csQueuedForDestruction))
 	{
 		// Stream 4 chunks per tick
-		for (int i = 0; i < 4; i++)
-		{
-			// Stream the next chunk
-			if (StreamNextChunk())
-			{
-				// Streaming finished. All chunks are loaded.
-				break;
-			}
-		}
+		StreamNextChunks(4);
 
 		// Unload all chunks that are out of the view distance (every 5 seconds)
 		if ((m_Player->GetWorld()->GetWorldAge() % 100) == 0)
@@ -2255,7 +2272,7 @@ void cClientHandle::ServerTick(float a_Dt)
 		cCSLock lock(m_CSState);
 		if (m_State == csAuthenticated)
 		{
-			StreamNextChunk();
+			StreamNextChunks();
 
 			// Remove the client handle from the server, it will be ticked from its cPlayer object from now on
 			cRoot::Get()->GetServer()->ClientMovedToWorld(this);

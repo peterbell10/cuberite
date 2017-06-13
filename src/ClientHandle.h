@@ -124,8 +124,8 @@ public:  // tolua_export
 	/** Authenticates the specified user, called by cAuthenticator */
 	void Authenticate(const AString & a_Name, const AString & a_UUID, const Json::Value & a_Properties);
 
-	/** This function sends a new unloaded chunk to the player. Returns true if all chunks are loaded. */
-	bool StreamNextChunk();
+	/** This function sends a_NumChunks new unloaded chunk to the player. Returns true if all chunks are loaded. */
+	bool StreamNextChunks(int a_NumChunks = 1);
 
 	/** Remove all loaded chunks that are no longer in range */
 	void UnloadOutOfRangeChunks(void);
