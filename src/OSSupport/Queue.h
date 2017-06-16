@@ -18,6 +18,9 @@ that are already in the queue by providing a second parameter, a class that
 implements the functions Delete() and Combine(). An example is given in
 cQueueFuncs and is used as the default behavior. */
 
+#include <mutex>
+#include <condition_variable>
+
 /** This empty struct allows for the callback functions to be inlined */
 template <class T>
 struct cQueueFuncs
@@ -25,7 +28,7 @@ struct cQueueFuncs
 public:
 
 	/** Called when an Item is deleted from the queue without being returned */
-	static void Delete(T) {}
+	static void Delete(T &) {}
 
 	/** Called when an Item is inserted with EnqueueItemIfNotPresent and there is another equal value already inserted */
 	static void Combine(T & a_existing, const T & a_new)
@@ -43,123 +46,159 @@ template <class ItemType, class Funcs = cQueueFuncs<ItemType> >
 class cQueue
 {
 	// The actual storage type for the queue
-	typedef typename std::list<ItemType> QueueType;
+	using QueueType = std::list<ItemType>;
 
-	// Make iterator an alias for the QueueType's iterator
-	typedef typename QueueType::iterator iterator;
-
+	using cLockGuard = std::lock_guard<std::mutex>;
+	using cUniqueLock = std::unique_lock<std::mutex>;
+	
 public:
-	cQueue() {}
-	~cQueue() {}
 
+	cQueue() = default;
 
 	/** Enqueues an item to the queue, may block if other threads are accessing the queue. */
 	void EnqueueItem(ItemType a_Item)
 	{
-		cCSLock Lock(m_CS);
-		m_Contents.push_back(a_Item);
-		m_evtAdded.Set();
+		// Do allocations outside of critical section
+		QueueType temp;
+		temp.push_back(std::move(a_Item));
+		{
+			cLockGuard Lock(m_CS);
+			m_Contents.splice(m_Contents.end(), temp);
+		}
+		m_evtAdded.notify_one();
 	}
 
 
-	/** Enqueues an item in the queue if not already present (as determined by operator ==). Blocks other threads from accessing the queue. */
-	void EnqueueItemIfNotPresent(ItemType a_Item)
+	/** Enqueues an item in the queue if not already present (as determined by operator ==). Blocks other threads from accessing the queue.
+	Returns true if the item was Enqueued. */
+	bool EnqueueItemIfNotPresent(ItemType a_Item)
 	{
-		cCSLock Lock(m_CS);
-
-		for (iterator itr = m_Contents.begin(); itr != m_Contents.end(); ++itr)
 		{
-			if ((*itr) == a_Item)
+			cLockGuard Lock(m_CS);
+			auto itr = std::find(m_Contents.begin(), m_Contents.end(), a_Item);
+			if (itr != m_Contents.end())
 			{
 				Funcs::Combine(*itr, a_Item);
-				return;
+				return false;
 			}
+			m_Contents.push_back(std::move(a_Item));
 		}
-		m_Contents.push_back(a_Item);
-		m_evtAdded.Set();
+		m_evtAdded.notify_one();
+		return true;
 	}
 
 
 	/** Dequeues an item from the queue if any are present.
 	Returns true if successful. Value of item is undefined if dequeuing was unsuccessful. */
-	bool TryDequeueItem(ItemType & item)
+	bool TryDequeueItem(ItemType & a_Item)
 	{
-		cCSLock Lock(m_CS);
-		if (m_Contents.empty())
+		QueueType temp;
 		{
-			return false;
+			cLockGuard Lock(m_CS);
+			if (m_Contents.empty())
+			{
+				return false;
+			}
+			// Take out the first node from the list
+			temp.splice(temp.begin(), m_Contents, m_Contents.begin());
 		}
-		item = m_Contents.front();
-		m_Contents.pop_front();
-		m_evtRemoved.Set();
+		
+		m_evtRemoved.notify_all();
+		a_Item = std::move(temp.front());
 		return true;
 	}
 
 
 	/** Dequeues an item from the queue, blocking until an item is available. */
-	ItemType DequeueItem(void)
+	ItemType DequeueItem()
 	{
-		cCSLock Lock(m_CS);
-		while (m_Contents.empty())
+		QueueType temp;
 		{
-			cCSUnlock Unlock(Lock);
-			m_evtAdded.Wait();
+			cUniqueLock Lock(m_CS);
+			m_evtAdded.wait(Lock, [this]() { return !m_Contents.empty(); });
+			// Take out the first node from the list
+			temp.splice(temp.begin(), m_Contents, m_Contents.begin());
 		}
-		ItemType item = m_Contents.front();
-		m_Contents.pop_front();
-		m_evtRemoved.Set();
-		return item;
+		m_evtRemoved.notify_all();
+		a_Item = std::move(temp.front());
+		return true;
+	}
+
+
+	/** Dequeues an item from the queue, blocking until an item is available or the predicate returns true.
+	Returns true if successful. Value of item is undefined if dequeuing was unsuccessful. */
+	template <class Predicate>
+	bool DequeueItem(ItemType & a_Item, Predicate a_Pred)
+	{
+		QueueType temp;
+		{
+			cUniqueLock Lock(m_CS);
+			m_evtAdded.wait(Lock, [this, a_Pred]() { return (!m_Contents.empty() || a_Pred()); });
+
+			if (m_Contents.empty())
+			{
+				// We were woken by the predicate
+				return false;
+			}
+			// Take out the first node from the list
+			temp.splice(temp.begin(), m_Contents, m_Contents.begin());
+		}
+		m_evtRemoved.notify_all();
+		a_Item = std::move(temp.front());
+		return true;
 	}
 
 
 	/** Blocks until the queue is empty. */
 	void BlockTillEmpty(void)
 	{
-		cCSLock Lock(m_CS);
-		while (!m_Contents.empty())
-		{
-			cCSUnlock Unlock(Lock);
-			m_evtRemoved.Wait();
-		}
+		cUniqueLock Lock(m_CS);
+		m_evtRemoved.wait(Lock, [this]() { return m_Contents.empty(); });
 	}
 
 
 	/** Removes all Items from the Queue, calling Delete on each of them. */
 	void Clear(void)
 	{
-		cCSLock Lock(m_CS);
-		while (!m_Contents.empty())
+		QueueType temp;
 		{
-			Funcs::Delete(m_Contents.front());
-			m_Contents.pop_front();
+			cLockGuard Lock(m_CS);
+			std::swap(temp, m_Contents);
+		}
+
+		m_evtRemoved.notify_all();
+		
+		for (auto & Item : temp)
+		{
+			Funcs::Delete(Item);
 		}
 	}
-
 
 	/** Returns the size at time of being called.
 	Do not use to determine whether to call DequeueItem(), use TryDequeueItem() instead */
 	size_t Size(void)
 	{
-		cCSLock Lock(m_CS);
+		cLockGuard Lock(m_CS);
 		return m_Contents.size();
 	}
 
 
 	/** Removes the item from the queue. If there are multiple such items, only the first one is removed.
 	Returns true if the item has been removed, false if no such item found. */
-	bool Remove(ItemType a_Item)
+	bool Remove(const ItemType& a_Item)
 	{
-		cCSLock Lock(m_CS);
-		for (iterator itr = m_Contents.begin(); itr != m_Contents.end(); ++itr)
 		{
-			if ((*itr) == a_Item)
+			cLockGuard Lock(m_CS);
+			auto itr = std::find(m_Contents.begin(), m_Contents.end(), a_Item);
+			if (itr == m_Contents.end())
 			{
-				m_Contents.erase(itr);
-				m_evtRemoved.Set();
-				return true;
+				return false;
 			}
+			m_Contents.erase(itr);
 		}
-		return false;
+
+		m_evtRemoved.notify_all();
+		return true;
 	}
 
 
@@ -167,16 +206,13 @@ public:
 	template <class Predicate>
 	void RemoveIf(Predicate a_Predicate)
 	{
-		cCSLock Lock(m_CS);
+		cLockGuard Lock(m_CS);
 		for (auto itr = m_Contents.begin(); itr != m_Contents.end();)
 		{
 			if (a_Predicate(*itr))
 			{
-				auto itr2 = itr;
-				++itr2;
-				m_Contents.erase(itr);
-				m_evtRemoved.Set();
-				itr = itr2;
+				itr = m_Contents.erase(itr);
+				m_evtRemoved.notify_all();
 			}
 			else
 			{
@@ -185,18 +221,24 @@ public:
 		}  // for itr - m_Contents[]
 	}
 
+	/** Wake those trying to dequeue items. */
+	void Wake()
+	{
+		m_evtAdded.notify_all();
+	}
+
 private:
 	/** The contents of the queue */
 	QueueType m_Contents;
 
 	/** Mutex that protects access to the queue contents */
-	cCriticalSection m_CS;
+	std::mutex m_CS;
 
-	/** Event that is signalled when an item is added */
-	cEvent m_evtAdded;
+	/** Condition that is signalled when an item is added */
+	std::condition_variable m_evtAdded;
 
-	/** Event that is signalled when an item is removed (both dequeued or erased) */
-	cEvent m_evtRemoved;
+	/** Condition that is signalled when an item is removed (both dequeued or erased) */
+	std::condition_variable m_evtRemoved;
 };
 
 
