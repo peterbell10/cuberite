@@ -17,6 +17,7 @@ SET (SRCS
 	ServerHandleImpl.cpp
 	StackTrace.cpp
 	TCPLinkImpl.cpp
+	ThreadPool.cpp
 	UDPEndpointImpl.cpp
 )
 
@@ -37,6 +38,7 @@ SET (HDRS
 	ServerHandleImpl.h
 	StackTrace.h
 	TCPLinkImpl.h
+	ThreadPool.h
 	UDPEndpointImpl.h
 )
 
