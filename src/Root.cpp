@@ -650,12 +650,14 @@ void cRoot::ExecuteConsoleCommand(const AString & a_Cmd, cCommandOutputCallback 
 	if (a_Cmd == "stop")
 	{
 		StopServer();
+		a_Output.Finished();
 		return;
 	}
 	else if (a_Cmd == "restart")
 	{
 		m_StopEvent.Set();
 		m_InputThreadRunFlag.clear();
+		a_Output.Finished();
 		return;
 	}
 
