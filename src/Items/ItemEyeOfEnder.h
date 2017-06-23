@@ -30,7 +30,10 @@ public:
 			// Handle end portal use
 			BLOCKTYPE ClickedBlock = 0;
 			NIBBLETYPE ClickedBlockMeta = 0;
-			VERIFY(a_World->GetBlockTypeMeta(a_BlockX, a_BlockY, a_BlockZ, ClickedBlock, ClickedBlockMeta));
+			if (!a_World->GetBlockTypeMeta(a_BlockX, a_BlockY, a_BlockZ, ClickedBlock, ClickedBlockMeta))
+			{
+				return false;
+			}
 			
 			if (
 				(ClickedBlock != E_BLOCK_END_PORTAL_FRAME) ||
@@ -61,15 +64,9 @@ public:
 	}
 
 private:
-	bool IsPortalComplete(cWorld * a_World, int a_BlockX, int a_BlockY, int a_BlockZ, NIBBLETYPE a_PortalDirection)
-	{
-		Vector3i Centre = FindPortalCentre(a_World, a_BlockX, a_BlockY, a_BlockZ, a_PortalDirection);
-		return IsPortalComplete(a_World, Centre);
-	}
 
-
-	/** Find the centre block of the end portal.	
-	The 3x3 central area cannot hold any end portal frames and either side of this must be an end portal frame. 
+	/** Find the centre block of the end portal.
+	The 3x3 central area cannot hold any end portal frames and either side of this must be an end portal frame.
 	This means the central block can be found by checking only 2 blocks.
 	*/
 	Vector3i FindPortalCentre(cWorld * a_World, int a_BlockX, int a_BlockY, int a_BlockZ, NIBBLETYPE a_PortalDirection)
@@ -78,30 +75,30 @@ private:
 		Vector3i PerpDir;  // Perpendicular to facing direction
 		switch (a_PortalDirection)
 		{
-			case E_META_END_PORTAL_FRAME_ZP:
-			{
-				Centre.z += 2;
-				PerpDir.x = 1;
-				break;
-			}
-			case E_META_END_PORTAL_FRAME_ZM:
-			{
-				Centre.z -= 2;
-				PerpDir.x = -1;
-				break;
-			}
-			case E_META_END_PORTAL_FRAME_XP:
-			{
-				Centre.x += 2;
-				PerpDir.z = -1;
-				break;
-			}
-			case E_META_END_PORTAL_FRAME_XM:
-			{
-				Centre.x -= 2;
-				PerpDir.z = 1;
-				break;
-			}
+		case E_META_END_PORTAL_FRAME_ZP:
+		{
+			Centre.z += 2;
+			PerpDir.x = 1;
+			break;
+		}
+		case E_META_END_PORTAL_FRAME_ZM:
+		{
+			Centre.z -= 2;
+			PerpDir.x = -1;
+			break;
+		}
+		case E_META_END_PORTAL_FRAME_XP:
+		{
+			Centre.x += 2;
+			PerpDir.z = -1;
+			break;
+		}
+		case E_META_END_PORTAL_FRAME_XM:
+		{
+			Centre.x -= 2;
+			PerpDir.z = 1;
+			break;
+		}
 		}
 
 		if (a_World->GetBlock(Centre + PerpDir) == E_BLOCK_END_PORTAL_FRAME)
@@ -116,18 +113,17 @@ private:
 	}
 
 
-
-
-	/** Returns true if the edges of the portal about Centre are eye filled portal frames and no portal frames are in the 3x3 area around the centre.
+	/** Returns true if the edges of the portal are all eye filled portal frames and no portal frames are in the 3x3 area around the centre.
 	Note that the centre blocks don't need to be air, even bedrock should be overwritten by portal blocks. */
-	bool IsPortalComplete(cWorld * a_World, Vector3i a_Centre)
+	bool IsPortalComplete(cWorld * a_World, int a_BlockX, int a_BlockY, int a_BlockZ, NIBBLETYPE a_PortalDirection)
 	{
+		Vector3i Centre = FindPortalCentre(a_World, a_BlockX, a_BlockY, a_BlockZ, a_PortalDirection);
 		// Check central blocks aren't portal frames
 		for (int RelX = -1; RelX != 2; ++RelX)
 		{
 			for (int RelZ = -1; RelZ != 2; ++RelZ)
 			{
-				if (a_World->GetBlock(a_Centre.x + RelX, a_Centre.y, a_Centre.z + RelZ) == E_BLOCK_END_PORTAL_FRAME)
+				if (a_World->GetBlock(Centre.x + RelX, Centre.y, Centre.z + RelZ) == E_BLOCK_END_PORTAL_FRAME)
 				{
 					return false;
 				}
@@ -153,16 +149,16 @@ private:
 			}
 		};
 
-		return std::all_of(PortalCheck.cbegin(), PortalCheck.cend(), [a_Centre, a_World](Vector3i a_Pos)
+		return std::all_of(PortalCheck.cbegin(), PortalCheck.cend(), [Centre, a_World](Vector3i a_Pos)
 		{
 			BLOCKTYPE Block;
 			NIBBLETYPE Meta;
-			a_Pos += a_Centre;
-			a_World->GetBlockTypeMeta(a_Pos.x, a_Pos.y, a_Pos.z, Block, Meta);
+			a_Pos += Centre;
 			return (
-				(Block == E_BLOCK_END_PORTAL_FRAME) &&   //Is an end portal frame
+				a_World->GetBlockTypeMeta(a_Pos.x, a_Pos.y, a_Pos.z, Block, Meta) &&
+				(Block == E_BLOCK_END_PORTAL_FRAME) &&   // Is an end portal frame
 				((Meta & E_META_END_PORTAL_EYE) != 0)  // and must have an eye
-			);
+				);
 		});
 	}
 };
