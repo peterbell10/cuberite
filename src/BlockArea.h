@@ -32,10 +32,6 @@ using cBlockEntityCallback = cFunctionRef<bool(cBlockEntity &)>;
 // tolua_begin
 class cBlockArea
 {
-	// tolua_end
-	DISALLOW_COPY_AND_ASSIGN(cBlockArea);
-	// tolua_begin
-
 public:
 
 	/** What data is to be queried (bit-mask) */

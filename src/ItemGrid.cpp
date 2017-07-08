@@ -25,16 +25,6 @@ cItemGrid::cItemGrid(int a_Width, int a_Height) :
 
 
 
-cItemGrid::~cItemGrid()
-{
-	delete[] m_Slots;
-	m_Slots = nullptr;
-}
-
-
-
-
-
 bool cItemGrid::IsValidSlotNum(int a_SlotNum) const
 {
 	return ((a_SlotNum >= 0) && (a_SlotNum < m_NumSlots));

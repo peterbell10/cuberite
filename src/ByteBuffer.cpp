@@ -100,8 +100,6 @@ cByteBuffer::cByteBuffer(size_t a_BufferSize) :
 cByteBuffer::~cByteBuffer()
 {
 	CheckValid();
-	delete[] m_Buffer;
-	m_Buffer = nullptr;
 }
 
 
@@ -132,7 +130,7 @@ bool cByteBuffer::Write(const void * a_Bytes, size_t a_Count)
 		// Need to wrap around the ringbuffer end
 		if (TillEnd > 0)
 		{
-			memcpy(m_Buffer + m_WritePos, Bytes, TillEnd);
+			memcpy(m_Buffer.get() + m_WritePos, Bytes, TillEnd);
 			Bytes += TillEnd;
 			a_Count -= TillEnd;
 			WrittenBytes = TillEnd;
@@ -143,7 +141,7 @@ bool cByteBuffer::Write(const void * a_Bytes, size_t a_Count)
 	// We're guaranteed that we'll fit in a single write op
 	if (a_Count > 0)
 	{
-		memcpy(m_Buffer + m_WritePos, Bytes, a_Count);
+		memcpy(m_Buffer.get() + m_WritePos, Bytes, a_Count);
 		m_WritePos += a_Count;
 		WrittenBytes += a_Count;
 	}
@@ -747,7 +745,7 @@ bool cByteBuffer::ReadBuf(void * a_Buffer, size_t a_Count)
 		// Reading across the ringbuffer end, read the first part and adjust parameters:
 		if (BytesToEndOfBuffer > 0)
 		{
-			memcpy(Dst, m_Buffer + m_ReadPos, BytesToEndOfBuffer);
+			memcpy(Dst, m_Buffer.get() + m_ReadPos, BytesToEndOfBuffer);
 			Dst += BytesToEndOfBuffer;
 			a_Count -= BytesToEndOfBuffer;
 		}
@@ -757,7 +755,7 @@ bool cByteBuffer::ReadBuf(void * a_Buffer, size_t a_Count)
 	// Read the rest of the bytes in a single read (guaranteed to fit):
 	if (a_Count > 0)
 	{
-		memcpy(Dst, m_Buffer + m_ReadPos, a_Count);
+		memcpy(Dst, m_Buffer.get() + m_ReadPos, a_Count);
 		m_ReadPos += a_Count;
 	}
 	return true;
@@ -778,7 +776,7 @@ bool cByteBuffer::WriteBuf(const void * a_Buffer, size_t a_Count)
 	if (BytesToEndOfBuffer <= a_Count)
 	{
 		// Reading across the ringbuffer end, read the first part and adjust parameters:
-		memcpy(m_Buffer + m_WritePos, Src, BytesToEndOfBuffer);
+		memcpy(m_Buffer.get() + m_WritePos, Src, BytesToEndOfBuffer);
 		Src += BytesToEndOfBuffer;
 		a_Count -= BytesToEndOfBuffer;
 		m_WritePos = 0;
@@ -787,7 +785,7 @@ bool cByteBuffer::WriteBuf(const void * a_Buffer, size_t a_Count)
 	// Read the rest of the bytes in a single read (guaranteed to fit):
 	if (a_Count > 0)
 	{
-		memcpy(m_Buffer + m_WritePos, Src, a_Count);
+		memcpy(m_Buffer.get() + m_WritePos, Src, a_Count);
 		m_WritePos += a_Count;
 	}
 	return true;
@@ -811,7 +809,7 @@ bool cByteBuffer::ReadString(AString & a_String, size_t a_Count)
 		// Reading across the ringbuffer end, read the first part and adjust parameters:
 		if (BytesToEndOfBuffer > 0)
 		{
-			a_String.assign(m_Buffer + m_ReadPos, BytesToEndOfBuffer);
+			a_String.assign(m_Buffer.get() + m_ReadPos, BytesToEndOfBuffer);
 			ASSERT(a_Count >= BytesToEndOfBuffer);
 			a_Count -= BytesToEndOfBuffer;
 		}
@@ -821,7 +819,7 @@ bool cByteBuffer::ReadString(AString & a_String, size_t a_Count)
 	// Read the rest of the bytes in a single read (guaranteed to fit):
 	if (a_Count > 0)
 	{
-		a_String.append(m_Buffer + m_ReadPos, a_Count);
+		a_String.append(m_Buffer.get() + m_ReadPos, a_Count);
 		m_ReadPos += a_Count;
 	}
 	return true;
@@ -916,11 +914,11 @@ void cByteBuffer::ReadAgain(AString & a_Out)
 	{
 		// Across the ringbuffer end, read the first part and adjust next part's start:
 		ASSERT(m_BufferSize >= m_DataStart);
-		a_Out.append(m_Buffer + m_DataStart, m_BufferSize - m_DataStart);
+		a_Out.append(m_Buffer.get() + m_DataStart, m_BufferSize - m_DataStart);
 		DataStart = 0;
 	}
 	ASSERT(m_ReadPos >= DataStart);
-	a_Out.append(m_Buffer + DataStart, m_ReadPos - DataStart);
+	a_Out.append(m_Buffer.get() + DataStart, m_ReadPos - DataStart);
 }
 
 
