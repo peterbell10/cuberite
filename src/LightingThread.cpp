@@ -560,6 +560,28 @@ void cLightingThread::QueueChunkStay(cLightingChunkStay & a_ChunkStay)
 
 
 
+void cLightingThread::UnqueueChunkStay(cLightingChunkStay & a_ChunkStay)
+{
+	// Look for the ChunkStay in lighting queue, if it's there return to the pending queue.
+	cCSLock Lock(m_CS);
+	auto itr = std::find(m_Queue.begin(), m_Queue.end(), &a_ChunkStay);
+	if (itr == m_Queue.end())
+	{
+		return;  // Not queued yet, nothing to do
+	}
+	m_Queue.erase(itr);
+	m_PendingQueue.push_back(&a_ChunkStay);
+
+	if (m_Queue.empty())
+	{
+		m_evtQueueEmpty.Set();
+	}
+}
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // cLightingThread::cLightingChunkStay:
 
@@ -578,6 +600,18 @@ cLightingThread::cLightingChunkStay::cLightingChunkStay(cLightingThread & a_Ligh
 	Add(a_ChunkX - 1, a_ChunkZ + 1);
 	Add(a_ChunkX - 1, a_ChunkZ);
 	Add(a_ChunkX - 1, a_ChunkZ - 1);
+}
+
+
+
+
+
+bool cLightingThread::cLightingChunkStay::OnChunkUnavailable(int a_ChunkX, int a_ChunkZ)
+{
+	m_LightingThread.UnqueueChunkStay(*this);
+
+	// Keep undates about unloaded chunks
+	return true;
 }
 
 

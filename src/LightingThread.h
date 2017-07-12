@@ -87,6 +87,7 @@ protected:
 			UNUSED(a_ChunkX);
 			UNUSED(a_ChunkZ);
 		}
+		virtual bool OnChunkUnavailable(int a_ChunkX, int a_ChunkZ) override;
 		virtual bool OnAllChunksAvailable(void) override;
 		virtual void OnDisabled(void) override;
 	} ;
@@ -188,6 +189,9 @@ protected:
 	Called by cLightingChunkStay when all of its chunks are loaded. */
 	void QueueChunkStay(cLightingChunkStay & a_ChunkStay);
 
+	/** Ensures the chunkstay is kept in the pending queue.
+	Called by cLightingChunkStay when any of its chunks were loaded but are now unavailable*/
+	void UnqueueChunkStay(cLightingChunkStay & a_ChunkStay);
 } ;
 
 

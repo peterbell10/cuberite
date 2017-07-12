@@ -65,6 +65,14 @@ public:
 	/** Called when a specific chunk become available. */
 	virtual void OnChunkAvailable(int a_ChunkX, int a_ChunkZ) = 0;
 
+	/** Called when a chunk was previously available but not any more (e.g. when regenerating).
+	If returns true, OnChunkAvailable and if applicable OnAllChunksAvailable will be called when the chunk is available again. */
+	virtual bool OnChunkUnavailable(int a_ChunkX, int a_ChunkZ)
+	{
+		UNUSED(a_ChunkX); UNUSED(a_ChunkZ);
+		return false;  // Default to old behaviour
+	}
+
 	/** Caled once all of the contained chunks are available.
 	If returns true, the ChunkStay is automatically disabled by the ChunkMap; if it returns false, the ChunkStay is kept. */
 	virtual bool OnAllChunksAvailable(void) = 0;
@@ -92,6 +100,10 @@ protected:
 	May be called for chunks outside this ChunkStay.
 	Returns true if the ChunkStay is to be automatically disabled by the ChunkMap; returns false to keep the ChunkStay. */
 	bool ChunkAvailable(int a_ChunkX, int a_ChunkZ);
+
+	/** Called by cChunkMap when a chunk that was previously available becomes unavailable, checks m_NumLoaded and triggers the appropriate callbacks.
+	May be called for chunks outside this ChunkStay. */
+	void ChunkUnavailable(int a_ChunkX, int a_ChunkZ);
 } ;
 
 

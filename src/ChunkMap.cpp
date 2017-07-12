@@ -2363,6 +2363,11 @@ void cChunkMap::MarkChunkRegenerating(int a_ChunkX, int a_ChunkZ)
 		return;
 	}
 	Chunk->MarkRegenerating();
+
+	for (auto Stay : m_ChunkStays)
+	{
+		Stay->ChunkUnavailable(a_ChunkX, a_ChunkZ);
+	}
 }
 
 

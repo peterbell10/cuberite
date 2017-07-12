@@ -133,3 +133,21 @@ bool cChunkStay::ChunkAvailable(int a_ChunkX, int a_ChunkZ)
 
 
 
+
+void cChunkStay::ChunkUnavailable(int a_ChunkX, int a_ChunkZ)
+{
+	cChunkCoords Coords{ a_ChunkX, a_ChunkZ };
+	if (std::find(m_Chunks.begin(), m_Chunks.end(), Coords) == m_Chunks.end())
+	{
+		return;  // Not a chunk we're interested in
+	}
+
+	if (OnChunkUnavailable(a_ChunkX, a_ChunkZ))
+	{
+		m_OutstandingChunks.push_back(Coords);
+	}
+}
+
+
+
+
