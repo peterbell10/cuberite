@@ -10,8 +10,6 @@
 #include "Globals.h"
 
 #include "FinishGen.h"
-#include "../Simulator/FluidSimulator.h"  // for cFluidSimulator::CanWashAway()
-#include "../Simulator/FireSimulator.h"
 #include "../World.h"
 #include "../IniFile.h"
 
@@ -158,7 +156,7 @@ void cFinishGenNetherClumpFoliage::TryPlaceClump(cChunkDesc & a_ChunkDesc, int a
 
 				if (IsFireBlock)  // don't place fire on non-forever burning blocks.
 				{
-					if (!cFireSimulator::DoesBurnForever(BlockBelow))
+					if (!cBlockInfo::DoesBurnForever(BlockBelow))
 					{
 						continue;
 					}
@@ -1181,7 +1179,7 @@ void cFinishGenPreSimulator::StationarizeFluid(
 						continue;
 					}
 					BLOCKTYPE Neighbor = cChunkDef::GetBlock(a_BlockTypes, x + Coords[i].x, y + Coords[i].y, z + Coords[i].z);
-					if ((Neighbor == E_BLOCK_AIR) || cFluidSimulator::CanWashAway(Neighbor))
+					if ((Neighbor == E_BLOCK_AIR) || cBlockInfo::CanBeWashedAway(Neighbor))
 					{
 						// There is an air / washable neighbor, simulate this block
 						BlockToSet = a_Fluid;

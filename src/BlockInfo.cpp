@@ -668,6 +668,77 @@ cBlockInfo::cBlockInfoArray::cBlockInfoArray()
 	Info[E_BLOCK_STONE                        ].m_CanBeTerraformed = true;
 
 
+	// Blocks that can be washed away
+	Info[E_BLOCK_ACTIVATOR_RAIL               ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_ACTIVE_COMPARATOR            ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_BEETROOTS                    ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_BIG_FLOWER                   ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_BROWN_MUSHROOM               ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_CACTUS                       ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_COBWEB                       ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_CROPS                        ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_DEAD_BUSH                    ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_DETECTOR_RAIL                ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_INACTIVE_COMPARATOR          ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_LILY_PAD                     ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_POWERED_RAIL                 ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_RAIL                         ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_REDSTONE_REPEATER_OFF        ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_REDSTONE_REPEATER_ON         ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_REDSTONE_TORCH_OFF           ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_REDSTONE_TORCH_ON            ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_REDSTONE_WIRE                ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_RED_MUSHROOM                 ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_RED_ROSE                     ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_SNOW                         ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_SUGARCANE                    ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_TALL_GRASS                   ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_TORCH                        ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_TRIPWIRE_HOOK                ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_TRIPWIRE                     ].m_CanBeWashedAway = true;
+	Info[E_BLOCK_YELLOW_FLOWER                ].m_CanBeWashedAway = true;
+
+
+	// Blocks that fuel fires
+	Info[E_BLOCK_PLANKS                       ].m_IsFuel = true;
+	Info[E_BLOCK_DOUBLE_WOODEN_SLAB           ].m_IsFuel = true;
+	Info[E_BLOCK_WOODEN_SLAB                  ].m_IsFuel = true;
+	Info[E_BLOCK_OAK_WOOD_STAIRS              ].m_IsFuel = true;
+	Info[E_BLOCK_SPRUCE_WOOD_STAIRS           ].m_IsFuel = true;
+	Info[E_BLOCK_BIRCH_WOOD_STAIRS            ].m_IsFuel = true;
+	Info[E_BLOCK_JUNGLE_WOOD_STAIRS           ].m_IsFuel = true;
+	Info[E_BLOCK_LEAVES                       ].m_IsFuel = true;
+	Info[E_BLOCK_NEW_LEAVES                   ].m_IsFuel = true;
+	Info[E_BLOCK_LOG                          ].m_IsFuel = true;
+	Info[E_BLOCK_NEW_LOG                      ].m_IsFuel = true;
+	Info[E_BLOCK_WOOL                         ].m_IsFuel = true;
+	Info[E_BLOCK_BOOKCASE                     ].m_IsFuel = true;
+	Info[E_BLOCK_FENCE                        ].m_IsFuel = true;
+	Info[E_BLOCK_SPRUCE_FENCE                 ].m_IsFuel = true;
+	Info[E_BLOCK_BIRCH_FENCE                  ].m_IsFuel = true;
+	Info[E_BLOCK_JUNGLE_FENCE                 ].m_IsFuel = true;
+	Info[E_BLOCK_DARK_OAK_FENCE               ].m_IsFuel = true;
+	Info[E_BLOCK_ACACIA_FENCE                 ].m_IsFuel = true;
+	Info[E_BLOCK_OAK_FENCE_GATE               ].m_IsFuel = true;
+	Info[E_BLOCK_SPRUCE_FENCE_GATE            ].m_IsFuel = true;
+	Info[E_BLOCK_BIRCH_FENCE_GATE             ].m_IsFuel = true;
+	Info[E_BLOCK_JUNGLE_FENCE_GATE            ].m_IsFuel = true;
+	Info[E_BLOCK_DARK_OAK_FENCE_GATE          ].m_IsFuel = true;
+	Info[E_BLOCK_ACACIA_FENCE_GATE            ].m_IsFuel = true;
+	Info[E_BLOCK_TNT                          ].m_IsFuel = true;
+	Info[E_BLOCK_VINES                        ].m_IsFuel = true;
+	Info[E_BLOCK_HAY_BALE                     ].m_IsFuel = true;
+	Info[E_BLOCK_TALL_GRASS                   ].m_IsFuel = true;
+	Info[E_BLOCK_BIG_FLOWER                   ].m_IsFuel = true;
+	Info[E_BLOCK_DANDELION                    ].m_IsFuel = true;
+	Info[E_BLOCK_FLOWER                       ].m_IsFuel = true;
+	Info[E_BLOCK_CARPET                       ].m_IsFuel = true;
+
+
+	// Blocks that burn forever
+	Info[E_BLOCK_NETHERRACK                   ].m_DoesBurnForever = true;
+
+
 	// Block heights:
 	Info[E_BLOCK_BED                          ].m_BlockHeight = 0.5625;  // 9 pixels
 	Info[E_BLOCK_CAKE                         ].m_BlockHeight = 0.5;     // 8 pixels

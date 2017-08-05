@@ -52,6 +52,15 @@ public:
 	/** Can a finisher change it? */
 	bool m_CanBeTerraformed;
 
+	/** Can fluids break it? */
+	bool m_CanBeWashedAway;
+
+	/** Can fire consume it? */
+	bool m_IsFuel;
+
+	/** If it catches fire, will it burn forever? */
+	bool m_DoesBurnForever;
+
 	/** Block height */
 	float m_BlockHeight;
 
@@ -81,6 +90,9 @@ public:
 	inline static bool IsUseableBySpectator       (BLOCKTYPE a_Type) { return Get(a_Type).m_UseableBySpectator;  }
 	inline static bool FullyOccupiesVoxel         (BLOCKTYPE a_Type) { return Get(a_Type).m_FullyOccupiesVoxel;  }
 	inline static bool CanBeTerraformed           (BLOCKTYPE a_Type) { return Get(a_Type).m_CanBeTerraformed;    }
+	inline static bool CanBeWashedAway            (BLOCKTYPE a_Type) { return Get(a_Type).m_CanBeWashedAway;     }
+	inline static bool IsFuel                     (BLOCKTYPE a_Type) { return Get(a_Type).m_IsFuel;              }
+	inline static bool DoesBurnForever            (BLOCKTYPE a_Type) { return Get(a_Type).m_DoesBurnForever;     }
 	inline static float GetBlockHeight            (BLOCKTYPE a_Type) { return Get(a_Type).m_BlockHeight;         }
 	inline static float GetHardness               (BLOCKTYPE a_Type) { return Get(a_Type).m_Hardness;            }
 
@@ -100,6 +112,9 @@ public:
 		, m_UseableBySpectator(false)
 		, m_FullyOccupiesVoxel(false)
 		, m_CanBeTerraformed(false)
+		, m_CanBeWashedAway(false)
+		, m_IsFuel(false)
+		, m_DoesBurnForever(false)
 		, m_BlockHeight(1.0)
 		, m_Hardness(0.0f)
 		, m_Handler()

@@ -96,6 +96,42 @@ return
 					},
 					Notes = "Returns true if the block is suitable to be changed by a generator",
 				},
+				CanBeWashedAway =
+				{
+					IsStatic = true,
+					Params =
+					{
+						{
+							Name = "BlockType",
+							Type = "number",
+						},
+					},
+					Returns =
+					{
+						{
+							Type = "boolean",
+						},
+					},
+					Notes = "Returns true if the block can be broken by fluids",
+				},
+				DoesBurnForever =
+				{
+					IsStatic = true,
+					Params =
+					{
+						{
+							Name = "BlockType",
+							Type = "number",
+						},
+					},
+					Returns =
+					{
+						{
+							Type = "boolean",
+						},
+					},
+					Notes = "Returns true if the block will burn forever if it catches fire.",
+				},
 				FullyOccupiesVoxel =
 				{
 					IsStatic = true,
@@ -222,6 +258,24 @@ return
 					},
 					Notes = "Returns how much light the specified block type consumes.",
 				},
+				IsFuel =
+				{
+					IsStatic = true,
+					Params =
+					{
+						{
+							Name = "BlockType",
+							Type = "number",
+						},
+					},
+					Returns =
+					{
+						{
+							Type = "boolean",
+						},
+					},
+					Notes = "Returns true if fire can consume the specified block.",
+				},
 				IsOneHitDig =
 				{
 					IsStatic = true,
@@ -343,6 +397,16 @@ return
 					Type = "bool",
 					Notes = "Is this block suited to be terraformed?",
 				},
+				m_CanBeWashedAway =
+				{
+					Type = "bool",
+					Notes = "Can fluids break it?",
+				},
+				m_DoesBurnForever =
+				{
+					Type = "bool",
+					Notes = "If it catches fire, will it burn forever?",
+				},
 				m_FullyOccupiesVoxel =
 				{
 					Type = "bool",
@@ -352,6 +416,11 @@ return
 				{
 					Type = "number",
 					Notes = "The greater the value the longer the player needs to break the block.",
+				},
+				m_IsFuel =
+				{
+					Type = "bool",
+					Notes = "Can fire consume it?",
 				},
 				m_IsSnowable =
 				{

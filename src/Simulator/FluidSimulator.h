@@ -55,8 +55,6 @@ public:
 	bool IsStationaryFluidBlock(BLOCKTYPE a_BlockType) const { return (a_BlockType == m_StationaryFluidBlock); }
 	bool IsAnyFluidBlock       (BLOCKTYPE a_BlockType) const { return ((a_BlockType == m_FluidBlock) || (a_BlockType == m_StationaryFluidBlock)); }
 
-	static bool CanWashAway(BLOCKTYPE a_BlockType);
-
 	bool IsSolidBlock      (BLOCKTYPE a_BlockType);
 	bool IsPassableForFluid(BLOCKTYPE a_BlockType);
 

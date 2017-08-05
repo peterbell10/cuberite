@@ -2,7 +2,6 @@
 #include "Globals.h"  // NOTE: MSVC stupidness requires this to be the same across all modules
 
 #include "DispenserEntity.h"
-#include "../Simulator/FluidSimulator.h"
 #include "../Entities/Boat.h"
 #include "../Chunk.h"
 
@@ -341,7 +340,7 @@ bool cDispenserEntity::EmptyLiquidBucket(BLOCKTYPE a_BlockInFront, int a_SlotNum
 	if (
 		(a_BlockInFront != E_BLOCK_AIR) &&
 		!IsBlockLiquid(a_BlockInFront) &&
-		!cFluidSimulator::CanWashAway(a_BlockInFront)
+		!cBlockInfo::CanBeWashedAway(a_BlockInFront)
 	)
 	{
 		// Not a suitable block in front

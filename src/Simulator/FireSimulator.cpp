@@ -139,7 +139,7 @@ void cFireSimulator::SimulateChunk(std::chrono::milliseconds a_Dt, int a_ChunkX,
 			continue;
 		}
 
-		if ((itr->y > 0) && (!DoesBurnForever(a_Chunk->GetBlock(itr->x, itr->y - 1, itr->z))))
+		if ((itr->y > 0) && (!cBlockInfo::DoesBurnForever(a_Chunk->GetBlock(itr->x, itr->y - 1, itr->z))))
 		{
 			a_Chunk->SetMeta(x, y, z, BlockMeta + 1);
 		}
@@ -155,63 +155,6 @@ void cFireSimulator::SimulateChunk(std::chrono::milliseconds a_Dt, int a_ChunkX,
 bool cFireSimulator::IsAllowedBlock(BLOCKTYPE a_BlockType)
 {
 	return (a_BlockType == E_BLOCK_FIRE);
-}
-
-
-
-
-
-bool cFireSimulator::IsFuel(BLOCKTYPE a_BlockType)
-{
-	switch (a_BlockType)
-	{
-		case E_BLOCK_PLANKS:
-		case E_BLOCK_DOUBLE_WOODEN_SLAB:
-		case E_BLOCK_WOODEN_SLAB:
-		case E_BLOCK_OAK_WOOD_STAIRS:
-		case E_BLOCK_SPRUCE_WOOD_STAIRS:
-		case E_BLOCK_BIRCH_WOOD_STAIRS:
-		case E_BLOCK_JUNGLE_WOOD_STAIRS:
-		case E_BLOCK_LEAVES:
-		case E_BLOCK_NEW_LEAVES:
-		case E_BLOCK_LOG:
-		case E_BLOCK_NEW_LOG:
-		case E_BLOCK_WOOL:
-		case E_BLOCK_BOOKCASE:
-		case E_BLOCK_FENCE:
-		case E_BLOCK_SPRUCE_FENCE:
-		case E_BLOCK_BIRCH_FENCE:
-		case E_BLOCK_JUNGLE_FENCE:
-		case E_BLOCK_DARK_OAK_FENCE:
-		case E_BLOCK_ACACIA_FENCE:
-		case E_BLOCK_OAK_FENCE_GATE:
-		case E_BLOCK_SPRUCE_FENCE_GATE:
-		case E_BLOCK_BIRCH_FENCE_GATE:
-		case E_BLOCK_JUNGLE_FENCE_GATE:
-		case E_BLOCK_DARK_OAK_FENCE_GATE:
-		case E_BLOCK_ACACIA_FENCE_GATE:
-		case E_BLOCK_TNT:
-		case E_BLOCK_VINES:
-		case E_BLOCK_HAY_BALE:
-		case E_BLOCK_TALL_GRASS:
-		case E_BLOCK_BIG_FLOWER:
-		case E_BLOCK_DANDELION:
-		case E_BLOCK_FLOWER:
-		case E_BLOCK_CARPET:
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-
-
-
-
-bool cFireSimulator::DoesBurnForever(BLOCKTYPE a_BlockType)
-{
-	return (a_BlockType == E_BLOCK_NETHERRACK);
 }
 
 
@@ -258,12 +201,12 @@ int cFireSimulator::GetBurnStepTime(cChunk * a_Chunk, int a_RelX, int a_RelY, in
 	if (a_RelY > 0)
 	{
 		BLOCKTYPE BlockBelow = a_Chunk->GetBlock(a_RelX, a_RelY - 1, a_RelZ);
-		if (DoesBurnForever(BlockBelow))
+		if (cBlockInfo::DoesBurnForever(BlockBelow))
 		{
 			// Is burning atop of netherrack, burn forever (re-check in 10 sec)
 			return 10000;
 		}
-		if (IsFuel(BlockBelow))
+		if (cBlockInfo::IsFuel(BlockBelow))
 		{
 			return static_cast<int>(m_BurnStepTimeFuel);
 		}
@@ -276,7 +219,7 @@ int cFireSimulator::GetBurnStepTime(cChunk * a_Chunk, int a_RelX, int a_RelY, in
 		NIBBLETYPE BlockMeta;
 		if (a_Chunk->UnboundedRelGetBlock(a_RelX + gCrossCoords[i].x, a_RelY, a_RelZ + gCrossCoords[i].z, BlockType, BlockMeta))
 		{
-			if (IsFuel(BlockType))
+			if (cBlockInfo::IsFuel(BlockType))
 			{
 				return static_cast<int>(m_BurnStepTimeFuel);
 			}
@@ -365,7 +308,7 @@ void cFireSimulator::RemoveFuelNeighbors(cChunk * a_Chunk, int a_RelX, int a_Rel
 		}
 		BlockType = Neighbour->GetBlock(X, a_RelY + gNeighborCoords[i].y, Z);
 
-		if (!IsFuel(BlockType))
+		if (!cBlockInfo::IsFuel(BlockType))
 		{
 			continue;
 		}
@@ -420,7 +363,7 @@ bool cFireSimulator::CanStartFireInBlock(cChunk * a_NearChunk, int a_RelX, int a
 			// Neighbor inaccessible, skip it while evaluating
 			continue;
 		}
-		if (IsFuel(BlockType))
+		if (cBlockInfo::IsFuel(BlockType))
 		{
 			return true;
 		}

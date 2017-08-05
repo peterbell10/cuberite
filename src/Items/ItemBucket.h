@@ -3,7 +3,6 @@
 
 #include "ItemHandler.h"
 #include "../World.h"
-#include "../Simulator/FluidSimulator.h"
 #include "../Blocks/BlockHandler.h"
 #include "../LineBlockTracer.h"
 #include "../Blocks/ChunkInterface.h"
@@ -157,7 +156,7 @@ public:
 		}
 
 		// Wash away anything that was there prior to placing:
-		if (cFluidSimulator::CanWashAway(CurrentBlockType))
+		if (cBlockInfo::CanBeWashedAway(CurrentBlockType))
 		{
 			if (a_PluginInterface.CallHookPlayerBreakingBlock(*a_Player, BlockPos.x, BlockPos.y, BlockPos.z, EntryFace, CurrentBlockType, CurrentBlockMeta))
 			{
@@ -247,7 +246,7 @@ public:
 					m_ReplacedBlockType = a_CBBlockType;
 					m_ReplacedBlockMeta = a_CBBlockMeta;
 					m_EntryFace = static_cast<eBlockFace>(a_CBEntryFace);
-					if (!cFluidSimulator::CanWashAway(a_CBBlockType) && !IsBlockLiquid(a_CBBlockType))
+					if (!cBlockInfo::CanBeWashedAway(a_CBBlockType) && !IsBlockLiquid(a_CBBlockType))
 					{
 						AddFaceDirection(a_CBBlockX, a_CBBlockY, a_CBBlockZ, a_CBEntryFace);  // Was an unwashawayable block, can't overwrite it!
 					}

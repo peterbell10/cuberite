@@ -303,7 +303,7 @@ void cFloodyFluidSimulator::SpreadToNeighbor(cChunk * a_NearChunk, int a_RelX, i
 	}
 
 	// Wash away the block there, if possible:
-	if (CanWashAway(BlockType))
+	if (cBlockInfo::CanBeWashedAway(BlockType))
 	{
 		cBlockHandler * Handler = BlockHandler(BlockType);
 		if (Handler->DoesDropOnUnsuitable())
