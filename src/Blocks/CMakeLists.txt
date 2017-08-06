@@ -103,4 +103,9 @@ SET (HDRS
 
 if(NOT MSVC)
 	add_library(Blocks ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(Blocks PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Blocks)
 endif()

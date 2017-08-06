@@ -39,4 +39,9 @@ if(NOT MSVC)
 	add_library(WorldStorage ${SRCS} ${HDRS})
 
 	target_link_libraries(WorldStorage OSSupport)
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(WorldStorage PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(WorldStorage)
 endif()

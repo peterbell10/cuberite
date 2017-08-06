@@ -38,4 +38,9 @@ if(NOT MSVC)
 	if (UNIX)
 		target_link_libraries(PolarSSL++ mbedtls)
 	endif()
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(PolarSSL++ PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(PolarSSL++)
 endif()

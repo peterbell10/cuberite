@@ -65,4 +65,9 @@ endif()
 if(NOT MSVC)
 	add_library(Entities ${SRCS} ${HDRS})
 	target_link_libraries(Entities WorldStorage)
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(Entities PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Entities)
 endif()

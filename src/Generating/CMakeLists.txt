@@ -84,4 +84,9 @@ endif()
 if(NOT MSVC)
 	add_library(Generating ${SRCS} ${HDRS})
 	target_link_libraries(Generating OSSupport Blocks Bindings)
+
+	# Precompiled header support	
+	include(cotire)
+	set_target_properties(Generating PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Generating)
 endif()

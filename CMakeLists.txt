@@ -123,9 +123,13 @@ endif()
 set(BUILD_TOOLS OFF CACHE BOOL "")
 set(SELF_TEST OFF CACHE BOOL "")
 
+# Add cmake module paths
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/cotire/CMake/")
+
 # Check whether Lua can be used:
 if (NOT(DISABLE_SYSTEM_LUA))
-	include(CheckLua.cmake)
+	include(CheckLua)
 	if(HAS_LUA_INTERPRETER)
 		message(STATUS "Lua has been found in your system and will be used for the build.")
 		set(USE_SYSTEM_LUA 1)
@@ -152,7 +156,7 @@ if(${BUILD_UNSTABLE_TOOLS})
 	add_subdirectory(Tools/GeneratorPerformanceTest/)
 endif()
 
-include(SetFlags.cmake)
+include(SetFlags)
 set_flags()
 set_lib_flags()
 enable_profile()

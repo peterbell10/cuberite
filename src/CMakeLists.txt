@@ -37,7 +37,6 @@ SET (SRCS
 	Enchantments.cpp
 	FastRandom.cpp
 	FurnaceRecipe.cpp
-	Globals.cpp
 	IniFile.cpp
 	Inventory.cpp
 	Item.cpp
@@ -246,14 +245,6 @@ else ()
 
 	include_directories("${PROJECT_SOURCE_DIR}")
 
-	# Precompiled headers (1st part)
-	SET_SOURCE_FILES_PROPERTIES(
-		Globals.cpp PROPERTIES COMPILE_FLAGS "/Yc\"Globals.h\""
-	)
-	# CMake cannot "remove" the precompiled header flags, so we use a dummy precompiled header compatible with just this one file:
-	SET_SOURCE_FILES_PROPERTIES(
-		Bindings/Bindings.cpp PROPERTIES COMPILE_FLAGS "/Yc\"string.h\" /Fp\"$(IntDir)/Bindings.pch\""
-	)
 	list(APPEND SOURCE "Resources/Cuberite.rc")
 
 	# Make MSVC generate the PDB files even for the release build:
@@ -314,6 +305,11 @@ endif()
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE})
 
+#Precompiled header support
+include(cotire)
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "Globals.h")
+cotire("${CMAKE_PROJECT_NAME}")
+
 # Output the executable into the $/Server folder, so that it has access to external resources:
 SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY                ${CMAKE_SOURCE_DIR}/Server
@@ -331,15 +327,6 @@ SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "_debug")
 # Make the profiled executables have a "_profile" postfix
 SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES DEBUGPROFILE_POSTFIX "_debug_profile")
 SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES RELEASEPROFILE_POSTFIX "_profile")
-
-
-# Precompiled headers (2nd part)
-if (MSVC)
-	SET_TARGET_PROPERTIES(
-		${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_FLAGS "/Yu\"Globals.h\""
-		OBJECT_DEPENDS "$(IntDir)/$(TargetName.pch)"
-	)
-endif ()
 
 
 if (NOT MSVC)

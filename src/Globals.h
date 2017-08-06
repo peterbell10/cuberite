@@ -5,7 +5,7 @@
 // Also used for precompiled header generation in MSVC environments
 
 
-
+#pragma once
 
 
 // Compiler-dependent stuff:

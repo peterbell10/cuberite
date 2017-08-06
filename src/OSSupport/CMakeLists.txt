@@ -48,4 +48,9 @@ endif()
 
 if(NOT MSVC)
 	add_library(OSSupport ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(OSSupport PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(OSSupport)
 endif()

@@ -87,4 +87,9 @@ endif()
 
 if(NOT MSVC)
 	add_library(Mobs ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(Mobs PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Mobs)
 endif()

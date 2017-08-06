@@ -33,5 +33,10 @@ set (HDRS
 
 if(NOT MSVC)
 	add_library(IncrementalRedstoneSimulator ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(IncrementalRedstoneSimulator PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../../Globals.h")
+	cotire(IncrementalRedstoneSimulator)
 endif()
 

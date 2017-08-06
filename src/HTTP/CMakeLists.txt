@@ -39,4 +39,9 @@ endif()
 
 if(NOT MSVC)
 	add_library(HTTPServer ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(HTTPServer PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(HTTPServer)
 endif()

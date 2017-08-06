@@ -39,4 +39,9 @@ endif()
 
 if (NOT MSVC)
 	add_library(Protocol ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(Protocol PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Protocol)
 endif()

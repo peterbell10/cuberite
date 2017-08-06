@@ -41,4 +41,9 @@ endif()
 
 if(NOT MSVC)
 	add_library(UI ${SRCS} ${HDRS})
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(UI PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(UI)
 endif()

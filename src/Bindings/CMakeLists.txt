@@ -173,4 +173,9 @@ endif()
 if(NOT MSVC)
 	add_library(Bindings ${SRCS} ${HDRS})
 	target_link_libraries(Bindings lua sqlite tolualib mbedtls HTTPServer)
+	
+	# Precompiled header support
+	include(cotire)
+	set_target_properties(Bindings PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "../Globals.h")
+	cotire(Bindings)
 endif()
