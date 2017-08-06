@@ -4,7 +4,6 @@ include_directories ("${PROJECT_SOURCE_DIR}/../")
 
 SET (SRCS
 	CriticalSection.cpp
-	Errors.cpp
 	Event.cpp
 	File.cpp
 	GZipFile.cpp
@@ -23,7 +22,6 @@ SET (SRCS
 
 SET (HDRS
 	CriticalSection.h
-	Errors.h
 	Event.h
 	File.h
 	GetAddressInfoError.h

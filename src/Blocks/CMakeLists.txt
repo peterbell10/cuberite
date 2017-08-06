@@ -96,7 +96,6 @@ SET (HDRS
 	BroadcastInterface.h
 	ChunkInterface.h
 	ClearMetaOnDrop.h
-	GetHandlerCompileTimeTemplate.h
 	MetaRotator.h
 	WorldInterface.h
 )

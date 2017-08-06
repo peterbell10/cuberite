@@ -93,7 +93,7 @@ cWorld::cTickThread::cTickThread(cWorld & a_World) :
 void cWorld::cTickThread::Execute(void)
 {
 	auto LastTime = std::chrono::steady_clock::now();
-	auto TickTime = std::chrono::duration_cast<std::chrono::milliseconds>(cTickTime(1));
+	auto TickTime = std::chrono::milliseconds{ cTickTime(1) };
 
 	while (!m_ShouldTerminate)
 	{
