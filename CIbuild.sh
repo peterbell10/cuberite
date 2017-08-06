@@ -11,10 +11,10 @@ if [ "$CXX" == "g++" ]; then
 	# Travis Docker containers don't allow sudo, which update-alternatives needs, and it seems no alternative to this command is provided, hence:
 	export CXX="/usr/bin/g++-4.8"
 fi
-cmake . -GNinja -DBUILD_TOOLS=1 -DSELF_TEST=1;
+cmake . -DBUILD_TOOLS=1 -DSELF_TEST=1;
 
 echo "Building..."
-ninja -j 2;
+make -j 2;
 ctest -j 2 -V;
 
 # Create .gdbinit in home directory. Switches off the confirmation on quit
