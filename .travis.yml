@@ -12,6 +12,7 @@ addons:
     packages:
     - g++-4.8
     - gdb
+    - ninja-build
 
 script: ./CIbuild.sh
 
