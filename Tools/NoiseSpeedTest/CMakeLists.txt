@@ -1,6 +1,6 @@
 project (NoiseSpeedTest)
 
-include(../../SetFlags.cmake)
+include(SetFlags)
 set_flags()
 set_lib_flags()
 enable_profile()

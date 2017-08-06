@@ -1,6 +1,6 @@
 project (ProtoProxy)
 
-include(../../SetFlags.cmake)
+include(SetFlags)
 
 set_flags()
 set_lib_flags()
