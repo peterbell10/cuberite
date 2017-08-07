@@ -5,14 +5,11 @@
 
 #include <functional>
 
-#include "Simulator/SimulatorManager.h"
 #include "ChunkMap.h"
 #include "WorldStorage/WorldStorage.h"
 #include "Generating/ChunkGenerator.h"
 #include "ChunkSender.h"
-#include "Defines.h"
 #include "LightingThread.h"
-#include "Item.h"
 #include "Mobs/Monster.h"
 #include "Entities/ProjectileEntity.h"
 #include "Entities/Boat.h"
@@ -21,13 +18,13 @@
 #include "MapManager.h"
 #include "Blocks/WorldInterface.h"
 #include "Blocks/BroadcastInterface.h"
-#include "EffectID.h"
 
 
-
+enum class EffectID : Int32;
 class cFireSimulator;
 class cFluidSimulator;
 class cSandSimulator;
+class cSimulatorManager;
 class cRedstoneSimulator;
 class cItem;
 class cPlayer;
@@ -206,7 +203,7 @@ public:
 	void BroadcastScoreUpdate                (const AString & a_Objective, const AString & a_Player, cObjective::Score a_Score, Byte a_Mode);
 	void BroadcastDisplayObjective           (const AString & a_Objective, cScoreboard::eDisplaySlot a_Display);
 	void BroadcastSoundEffect                (const AString & a_SoundName, double a_X, double a_Y, double a_Z, float a_Volume, float a_Pitch, const cClientHandle * a_Exclude = nullptr) override;  // tolua_export
-	virtual void BroadcastSoundParticleEffect        (const EffectID a_EffectID, int a_SrcX, int a_SrcY, int a_SrcZ, int a_Data, const cClientHandle * a_Exclude = nullptr) override;  // tolua_export
+	virtual void BroadcastSoundParticleEffect(const EffectID a_EffectID, int a_SrcX, int a_SrcY, int a_SrcZ, int a_Data, const cClientHandle * a_Exclude = nullptr) override;  // tolua_export
 	void BroadcastSpawnEntity                (cEntity & a_Entity, const cClientHandle * a_Exclude = nullptr);
 	void BroadcastTeleportEntity             (const cEntity & a_Entity, const cClientHandle * a_Exclude = nullptr);
 	void BroadcastThunderbolt                (int a_BlockX, int a_BlockY, int a_BlockZ, const cClientHandle * a_Exclude = nullptr);
@@ -443,7 +440,7 @@ public:
 
 	/** Spawns an minecart at the given coordinates.
 	Returns the UniqueID of the spawned minecart, or cEntity::INVALID_ID on failure. */
-	UInt32 SpawnMinecart(double a_X, double a_Y, double a_Z, int a_MinecartType, const cItem & a_Content = cItem(), int a_BlockHeight = 1);
+	UInt32 SpawnMinecart(double a_X, double a_Y, double a_Z, int a_MinecartType, const cItem & a_Content = {}, int a_BlockHeight = 1);
 
 	/** Spawns a boat at the given coordinates.
 	Returns the UniqueID of the spawned boat, or cEntity::INVALID_ID on failure. */
@@ -491,11 +488,10 @@ public:
 
 	// tolua_end
 
-	inline cSimulatorManager * GetSimulatorManager(void) { return m_SimulatorManager.get(); }
-
-	inline cFluidSimulator * GetWaterSimulator(void) { return m_WaterSimulator; }
-	inline cFluidSimulator * GetLavaSimulator (void) { return m_LavaSimulator; }
-	inline cRedstoneSimulator * GetRedstoneSimulator(void) { return m_RedstoneSimulator; }
+	inline cSimulatorManager *  GetSimulatorManager (void) { return m_SimulatorManager.get();  }
+	inline cFluidSimulator *    GetWaterSimulator   (void) { return m_WaterSimulator.get();    }
+	inline cFluidSimulator *    GetLavaSimulator    (void) { return m_LavaSimulator.get();     }
+	inline cRedstoneSimulator * GetRedstoneSimulator(void) { return m_RedstoneSimulator.get(); }
 
 	/** Calls the callback for each block entity in the specified chunk; returns true if all block entities processed, false if the callback aborted by returning true */
 	bool ForEachBlockEntityInChunk(int a_ChunkX, int a_ChunkZ, cBlockEntityCallback & a_Callback);  // Exported in ManualBindings.cpp
@@ -913,12 +909,12 @@ private:
 	std::vector<BlockTickQueueItem *> m_BlockTickQueue;
 	std::vector<BlockTickQueueItem *> m_BlockTickQueueCopy;  // Second is for safely removing the objects from the queue
 
-	std::unique_ptr<cSimulatorManager>   m_SimulatorManager;
-	std::unique_ptr<cSandSimulator>      m_SandSimulator;
-	cFluidSimulator *                    m_WaterSimulator;
-	cFluidSimulator *                    m_LavaSimulator;
-	std::unique_ptr<cFireSimulator>      m_FireSimulator;
-	cRedstoneSimulator * m_RedstoneSimulator;
+	std::unique_ptr<cSimulatorManager>  m_SimulatorManager;
+	std::unique_ptr<cSandSimulator>     m_SandSimulator;
+	std::unique_ptr<cFluidSimulator>    m_WaterSimulator;
+	std::unique_ptr<cFluidSimulator>    m_LavaSimulator;
+	std::unique_ptr<cFireSimulator>     m_FireSimulator;
+	std::unique_ptr<cRedstoneSimulator> m_RedstoneSimulator;
 
 	cCriticalSection m_CSPlayers;
 	cPlayerList      m_Players;
@@ -1063,10 +1059,10 @@ private:
 	eWeather ChooseNewWeather(void);
 
 	/** Creates a new fluid simulator, loads its settings from the inifile (a_FluidName section) */
-	cFluidSimulator * InitializeFluidSimulator(cIniFile & a_IniFile, const char * a_FluidName, BLOCKTYPE a_SimulateBlock, BLOCKTYPE a_StationaryBlock);
+	std::unique_ptr<cFluidSimulator> InitializeFluidSimulator(cIniFile & a_IniFile, const char * a_FluidName, BLOCKTYPE a_SimulateBlock, BLOCKTYPE a_StationaryBlock);
 
 	/** Creates a new redstone simulator. */
-	cRedstoneSimulator * InitializeRedstoneSimulator(cIniFile & a_IniFile);
+	std::unique_ptr<cRedstoneSimulator> InitializeRedstoneSimulator(cIniFile & a_IniFile);
 
 	/** Adds the players queued in the m_PlayersToAdd queue into the m_Players list.
 	Assumes it is called from the Tick thread. */

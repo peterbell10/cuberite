@@ -19,10 +19,7 @@
 #include "Blocks/ChunkInterface.h"
 #include "Entities/Pickup.h"
 #include "DeadlockDetect.h"
-
-#ifndef _WIN32
-	#include <cstdlib>  // abs
-#endif
+#include "Simulator/SimulatorManager.h"
 
 #include "zlib/zlib.h"
 #include "json/json.h"

@@ -3,6 +3,8 @@
 
 // Declares the functions for linearly upscaling arrays
 
+#pragma once
+
 /*
 Upscaling means that the array is divided into same-size "cells", and each cell is
 linearly interpolated between its corners. The array's dimensions are therefore

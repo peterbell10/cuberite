@@ -6,6 +6,7 @@
 #include "Server.h"
 #include "Root.h"
 #include "IniFile.h"
+#include "Item.h"
 #include "Generating/ChunkDesc.h"
 #include "SetChunkData.h"
 #include "DeadlockDetect.h"
@@ -33,6 +34,7 @@
 #include "Simulator/NoopRedstoneSimulator.h"
 #include "Simulator/IncrementalRedstoneSimulator/IncrementalRedstoneSimulator.h"
 #include "Simulator/SandSimulator.h"
+#include "Simulator/SimulatorManager.h"
 #include "Simulator/VanillaFluidSimulator.h"
 #include "Simulator/VaporizeFluidSimulator.h"
 
@@ -44,10 +46,7 @@
 #include "Generating/Trees.h"
 #include "Bindings/PluginManager.h"
 #include "Blocks/BlockHandler.h"
-
-#ifndef _WIN32
-	#include <stdlib.h>
-#endif
+#include "Blocks/ChunkInterface.h"
 
 #include "Broadcaster.h"
 #include "SpawnPrepare.h"
@@ -206,10 +205,6 @@ cWorld::cWorld(const AString & a_WorldName, eDimension a_Dimension, const AStrin
 
 cWorld::~cWorld()
 {
-	delete m_WaterSimulator;     m_WaterSimulator    = nullptr;
-	delete m_LavaSimulator;      m_LavaSimulator     = nullptr;
-	delete m_RedstoneSimulator;  m_RedstoneSimulator = nullptr;
-
 	m_Storage.WaitForFinish();
 
 	// Unload the scoreboard
@@ -227,7 +222,7 @@ cWorld::~cWorld()
 
 
 
-void cWorld::CastThunderbolt (int a_BlockX, int a_BlockY, int a_BlockZ)
+void cWorld::CastThunderbolt(int a_BlockX, int a_BlockY, int a_BlockZ)
 {
 	BroadcastThunderbolt(a_BlockX, a_BlockY, a_BlockZ);
 	BroadcastSoundEffect("entity.lightning.thunder", a_BlockX, a_BlockY, a_BlockZ, 50, 1);
@@ -3883,7 +3878,7 @@ void cWorld::SetChunkAlwaysTicked(int a_ChunkX, int a_ChunkZ, bool a_AlwaysTicke
 
 
 
-cRedstoneSimulator * cWorld::InitializeRedstoneSimulator(cIniFile & a_IniFile)
+std::unique_ptr<cRedstoneSimulator> cWorld::InitializeRedstoneSimulator(cIniFile & a_IniFile)
 {
 	AString SimulatorName = a_IniFile.GetValueSet("Physics", "RedstoneSimulator", "Incremental");
 
@@ -3893,23 +3888,23 @@ cRedstoneSimulator * cWorld::InitializeRedstoneSimulator(cIniFile & a_IniFile)
 		SimulatorName = "Incremental";
 	}
 
-	cRedstoneSimulator * res = nullptr;
+	std::unique_ptr<cRedstoneSimulator> res;
 
 	if (NoCaseCompare(SimulatorName, "Incremental") == 0)
 	{
-		res = new cIncrementalRedstoneSimulator(*this);
+		res = cpp14::make_unique<cIncrementalRedstoneSimulator>(*this);
 	}
 	else if (NoCaseCompare(SimulatorName, "noop") == 0)
 	{
-		res = new cRedstoneNoopSimulator(*this);
+		res = cpp14::make_unique<cRedstoneNoopSimulator>(*this);
 	}
 	else
 	{
 		LOGWARNING("[Physics] Unknown RedstoneSimulator \"%s\" in %s, using the default of \"Incremental\".", SimulatorName.c_str(), GetIniFileName().c_str());
-		res = new cIncrementalRedstoneSimulator(*this);
+		res = cpp14::make_unique<cIncrementalRedstoneSimulator>(*this);
 	}
 
-	m_SimulatorManager->RegisterSimulator(res, 2 /* Two game ticks is a redstone tick */);
+	m_SimulatorManager->RegisterSimulator(res.get(), 2 /* Two game ticks is a redstone tick */);
 
 	return res;
 }
@@ -3918,7 +3913,7 @@ cRedstoneSimulator * cWorld::InitializeRedstoneSimulator(cIniFile & a_IniFile)
 
 
 
-cFluidSimulator * cWorld::InitializeFluidSimulator(cIniFile & a_IniFile, const char * a_FluidName, BLOCKTYPE a_SimulateBlock, BLOCKTYPE a_StationaryBlock)
+std::unique_ptr<cFluidSimulator> cWorld::InitializeFluidSimulator(cIniFile & a_IniFile, const char * a_FluidName, BLOCKTYPE a_SimulateBlock, BLOCKTYPE a_StationaryBlock)
 {
 	AString SimulatorNameKey;
 	Printf(SimulatorNameKey, "%sSimulator", a_FluidName);
@@ -3933,14 +3928,14 @@ cFluidSimulator * cWorld::InitializeFluidSimulator(cIniFile & a_IniFile, const c
 		LOGWARNING("[Physics] %s not present or empty in %s, using the default of \"%s\".", SimulatorNameKey.c_str(), GetIniFileName().c_str(), DefaultSimulatorName.c_str());
 		SimulatorName = DefaultSimulatorName;
 	}
-	cFluidSimulator * res = nullptr;
+	std::unique_ptr<cFluidSimulator> res;
 	int Rate = 1;
 	if (
 		(NoCaseCompare(SimulatorName, "vaporize") == 0) ||
 		(NoCaseCompare(SimulatorName, "vaporise") == 0)
 	)
 	{
-		res = new cVaporizeFluidSimulator(*this, a_SimulateBlock, a_StationaryBlock);
+		res = cpp14::make_unique<cVaporizeFluidSimulator>(*this, a_SimulateBlock, a_StationaryBlock);
 	}
 	else if (
 		(NoCaseCompare(SimulatorName, "noop") == 0) ||
@@ -3949,7 +3944,7 @@ cFluidSimulator * cWorld::InitializeFluidSimulator(cIniFile & a_IniFile, const c
 		(NoCaseCompare(SimulatorName, "nil") == 0)
 	)
 	{
-		res = new cNoopFluidSimulator(*this, a_SimulateBlock, a_StationaryBlock);
+		res = cpp14::make_unique<cNoopFluidSimulator>(*this, a_SimulateBlock, a_StationaryBlock);
 	}
 	else
 	{
@@ -3965,21 +3960,21 @@ cFluidSimulator * cWorld::InitializeFluidSimulator(cIniFile & a_IniFile, const c
 
 		if (NoCaseCompare(SimulatorName, "floody") == 0)
 		{
-			res = new cFloodyFluidSimulator(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
+			res = cpp14::make_unique<cFloodyFluidSimulator>(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
 		}
 		else if (NoCaseCompare(SimulatorName, "vanilla") == 0)
 		{
-			res = new cVanillaFluidSimulator(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
+			res = cpp14::make_unique<cVanillaFluidSimulator>(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
 		}
 		else
 		{
 			// The simulator name doesn't match anything we have, issue a warning:
 			LOGWARNING("%s [Physics]:%s specifies an unknown simulator, using the default \"Vanilla\".", GetIniFileName().c_str(), SimulatorNameKey.c_str());
-			res = new cVanillaFluidSimulator(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
+			res = cpp14::make_unique<cVanillaFluidSimulator>(*this, a_SimulateBlock, a_StationaryBlock, static_cast<NIBBLETYPE>(Falloff), TickDelay, NumNeighborsForSource);
 		}
 	}
 
-	m_SimulatorManager->RegisterSimulator(res, Rate);
+	m_SimulatorManager->RegisterSimulator(res.get(), Rate);
 
 	return res;
 }

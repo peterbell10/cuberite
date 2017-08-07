@@ -7,7 +7,7 @@
 
 // tolua_begin
 /** Identifies individual monster type, as well as their network type-ID. */
-enum eMonsterType
+enum eMonsterType : Int32
 {
 	mtInvalidType = -1,
 

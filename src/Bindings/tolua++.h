@@ -5,7 +5,7 @@
 // Only used from Bindings.cpp
 
 
-
+#pragma once
 
 #include "tolua++/include/tolua++.h"
 

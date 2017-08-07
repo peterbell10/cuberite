@@ -36,6 +36,7 @@
 #include "Bindings/PluginManager.h"
 #include "Blocks/BlockHandler.h"
 #include "Simulator/FluidSimulator.h"
+#include "Simulator/SimulatorManager.h"
 #include "MobCensus.h"
 #include "MobSpawner.h"
 #include "BlockInServerPluginInterface.h"

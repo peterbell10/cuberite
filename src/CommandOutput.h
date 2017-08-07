@@ -5,7 +5,7 @@
 
 
 
-
+#pragma once
 
 /** Interface for a callback that receives command output
 The Out() function is called for any output the command has produced.

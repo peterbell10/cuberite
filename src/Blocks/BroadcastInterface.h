@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "EffectID.h"
+enum class EffectID : Int32;
 
 
 

@@ -3,6 +3,8 @@
 
 // Declares the cBlockHopperHandler class representing the handler for the Hopper block
 
+#pragma once
+
 #include "MetaRotator.h"
 
 

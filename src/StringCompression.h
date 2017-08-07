@@ -3,6 +3,8 @@
 
 // Interfaces to the wrapping functions for compression and decompression using AString as their data
 
+#pragma once
+
 #include "zlib/zlib.h"  // Needed for the Z_XXX return values
 
 

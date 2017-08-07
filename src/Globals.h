@@ -128,7 +128,7 @@
 #endif
 
 
-#include <stddef.h>
+#include <cstddef>
 
 
 // Integral types with predefined sizes:
@@ -202,19 +202,11 @@ template class SizeChecker<UInt8,  1>;
 	#endif  // GetFreeSpace
 #else
 	#include <sys/types.h>
-	#include <sys/time.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <netdb.h>
-	#include <time.h>
 	#include <dirent.h>
-	#include <errno.h>
-	#include <iostream>
-	#include <cstring>
-	#include <pthread.h>
-	#include <semaphore.h>
-	#include <fcntl.h>
 	#include <unistd.h>
 #endif
 
@@ -234,6 +226,8 @@ template class SizeChecker<UInt8,  1>;
 #include <cstdio>
 #include <cmath>
 #include <cstdarg>
+#include <cstring>
+#include <ctime>
 
 
 

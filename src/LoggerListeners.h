@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include "Logger.h"
 
 std::unique_ptr<cLogger::cListener> MakeConsoleListener(bool a_IsService);

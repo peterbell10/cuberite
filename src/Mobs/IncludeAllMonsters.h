@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Bat.h"
 #include "Blaze.h"
 #include "CaveSpider.h"

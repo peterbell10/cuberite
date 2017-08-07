@@ -86,6 +86,7 @@
 #include "BlockWallSign.h"
 #include "BlockWorkbench.h"
 
+#include "Simulator/SimulatorManager.h"
 
 
 

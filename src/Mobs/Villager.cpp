@@ -5,6 +5,7 @@
 #include "../World.h"
 #include "../BlockArea.h"
 #include "../Blocks/BlockHandler.h"
+#include "../Blocks/ChunkInterface.h"
 #include "../BlockInServerPluginInterface.h"
 
 
