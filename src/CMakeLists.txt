@@ -46,6 +46,7 @@ SET (SRCS
 	LinearInterpolation.cpp
 	LoggerListeners.cpp
 	Logger.cpp
+	LootTable.cpp
 	Map.cpp
 	MapManager.cpp
 	MemorySettingsRepository.cpp
@@ -76,6 +77,7 @@ SET (SRCS
 
 SET (HDRS
 	AllocationPool.h
+	BasicVariant.h
 	BiomeDef.h
 	BlockArea.h
 	BlockID.h
@@ -120,6 +122,7 @@ SET (HDRS
 	LinearInterpolation.h
 	LinearUpscale.h
 	Logger.h
+	LootTable.h
 	LoggerListeners.h
 	Map.h
 	MapManager.h
