@@ -5,6 +5,8 @@
 
 #include "Globals.h"
 
+#include "Endianness.h"
+
 #ifdef _MSC_VER
 	// Under MSVC, link to WinSock2 (needed by RawBEToUTF8's byteswapping)
 	#pragma comment(lib, "ws2_32.lib")
@@ -395,7 +397,7 @@ AString & RawBEToUTF8(const char * a_RawData, size_t a_NumShorts, AString & a_UT
 	a_UTF8.reserve(3 * a_NumShorts / 2);  // a quick guess of the resulting size
 	for (size_t i = 0; i < a_NumShorts; i++)
 	{
-		a_UTF8.append(UnicodeCharToUtf8(GetBEUShort(&a_RawData[i * 2])));
+		a_UTF8.append(UnicodeCharToUtf8(NetworkToHost4(&a_RawData[i * 2])));
 	}
 	return a_UTF8;
 }
@@ -993,48 +995,6 @@ AString Base64Encode(const AString & a_Input)
 	ASSERT(output_index == output.size());
 
 	return output;
-}
-
-
-
-
-
-short GetBEShort(const char * a_Mem)
-{
-	const Byte * Bytes = reinterpret_cast<const Byte *>(a_Mem);
-	return static_cast<short>((Bytes[0] << 8) | Bytes[1]);
-}
-
-
-
-
-
-unsigned short GetBEUShort(const char * a_Mem)
-{
-	const Byte * Bytes = reinterpret_cast<const Byte *>(a_Mem);
-	return static_cast<unsigned short>((Bytes[0] << 8) | Bytes[1]);
-}
-
-
-
-
-
-int GetBEInt(const char * a_Mem)
-{
-	const Byte * Bytes = reinterpret_cast<const Byte *>(a_Mem);
-	return (Bytes[0] << 24) | (Bytes[1] << 16) | (Bytes[2] << 8) | Bytes[3];
-}
-
-
-
-
-
-void SetBEInt(char * a_Mem, Int32 a_Value)
-{
-	a_Mem[0] = a_Value >> 24;
-	a_Mem[1] = static_cast<char>((a_Value >> 16) & 0xff);
-	a_Mem[2] = static_cast<char>((a_Value >> 8) & 0xff);
-	a_Mem[3] = static_cast<char>(a_Value & 0xff);
 }
 
 

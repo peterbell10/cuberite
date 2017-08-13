@@ -169,7 +169,7 @@ eNBTParseError cParsedNBT::ReadString(size_t & a_StringStart, size_t & a_StringL
 {
 	NEEDBYTES(2, eNBTParseError::npStringMissingLength);
 	a_StringStart = m_Pos + 2;
-	a_StringLen = static_cast<size_t>(GetBEShort(m_Data + m_Pos));
+	a_StringLen = static_cast<size_t>(NetworkToHost2(m_Data + m_Pos));
 	NEEDBYTES(2 + a_StringLen, eNBTParseError::npStringInvalidLength);
 	m_Pos += 2 + a_StringLen;
 	return eNBTParseError::npSuccess;
@@ -227,7 +227,7 @@ eNBTParseError cParsedNBT::ReadList(eTagType a_ChildrenType)
 
 	// Read the count:
 	NEEDBYTES(4, eNBTParseError::npListMissingLength);
-	int Count = GetBEInt(m_Data + m_Pos);
+	int Count = NetworkToHostInt4(m_Data + m_Pos);
 	m_Pos += 4;
 	if ((Count < 0) || (Count > MAX_LIST_ITEMS))
 	{
@@ -290,7 +290,7 @@ eNBTParseError cParsedNBT::ReadTag(void)
 		case TAG_ByteArray:
 		{
 			NEEDBYTES(4, eNBTParseError::npArrayMissingLength);
-			int len = GetBEInt(m_Data + m_Pos);
+			int len = NetworkToHostInt4(m_Data + m_Pos);
 			m_Pos += 4;
 			if (len < 0)
 			{
@@ -322,7 +322,7 @@ eNBTParseError cParsedNBT::ReadTag(void)
 		case TAG_IntArray:
 		{
 			NEEDBYTES(4, eNBTParseError::npArrayMissingLength);
-			int len = GetBEInt(m_Data + m_Pos);
+			int len = NetworkToHostInt4(m_Data + m_Pos);
 			m_Pos += 4;
 			if (len < 0)
 			{
@@ -496,7 +496,8 @@ void cFastNBTWriter::EndList(void)
 	ASSERT(m_Stack[m_CurrentStack].m_Type == TAG_List);
 
 	// Update the list count:
-	SetBEInt(const_cast<char *>(m_Result.c_str() + m_Stack[m_CurrentStack].m_Pos), m_Stack[m_CurrentStack].m_Count);
+	Int32 BEInt = HostToNetwork4(&m_Stack[m_CurrentStack].m_Count);
+	std::memcpy(&m_Result[0] + m_Stack[m_CurrentStack].m_Pos, &BEInt, sizeof(BEInt));
 
 	--m_CurrentStack;
 }

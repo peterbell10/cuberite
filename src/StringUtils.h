@@ -115,18 +115,6 @@ extern AString Base64Decode(const AString & a_Base64String);  // Exported manual
 /** Encodes a string into Base64 */
 extern AString Base64Encode(const AString & a_Input);  // Exported manually due to embedded NULs and extra parameter
 
-/** Reads two bytes from the specified memory location and interprets them as BigEndian short */
-extern short GetBEShort(const char * a_Mem);
-
-/** Reads two bytes from the specified memory location and interprets them as BigEndian unsigned short */
-extern unsigned short GetBEUShort(const char * a_Mem);
-
-/** Reads four bytes from the specified memory location and interprets them as BigEndian int */
-extern int GetBEInt(const char * a_Mem);
-
-/** Writes four bytes to the specified memory location so that they interpret as BigEndian int */
-extern void SetBEInt(char * a_Mem, Int32 a_Value);
-
 /** Splits a string that has embedded \0 characters, on those characters.
 a_Output is first cleared and then each separate string is pushed back into a_Output.
 Returns true if there are at least two strings in a_Output (there was at least one \0 separator). */

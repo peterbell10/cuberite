@@ -598,7 +598,7 @@ cChunkDef::BiomeMap * cWSSAnvil::LoadBiomeMapFromNBT(cChunkDef::BiomeMap * a_Bio
 	const char * BiomeData = (a_NBT.GetData(a_TagIdx));
 	for (size_t i = 0; i < ARRAYCOUNT(*a_BiomeMap); i++)
 	{
-		(*a_BiomeMap)[i] = static_cast<EMCSBiome>(GetBEInt(&BiomeData[i * 4]));
+		(*a_BiomeMap)[i] = static_cast<EMCSBiome>(NetworkToHost4(&BiomeData[i * 4]));
 		if ((*a_BiomeMap)[i] == 0xff)
 		{
 			// Unassigned biomes

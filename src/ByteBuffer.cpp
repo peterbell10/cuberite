@@ -272,10 +272,8 @@ bool cByteBuffer::ReadBEInt16(Int16 & a_Value)
 	CHECK_THREAD
 	CheckValid();
 	NEEDBYTES(2);
-	UInt16 val;
-	ReadBuf(&val, 2);
-	val = ntohs(val);
-	memcpy(&a_Value, &val, 2);
+	ReadBuf(&a_Value, 2);
+	a_Value = NetworkToHostShort2(&a_Value);
 	return true;
 }
 
@@ -289,7 +287,7 @@ bool cByteBuffer::ReadBEUInt16(UInt16 & a_Value)
 	CheckValid();
 	NEEDBYTES(2);
 	ReadBuf(&a_Value, 2);
-	a_Value = ntohs(a_Value);
+	a_Value = NetworkToHost2(&a_Value);
 	return true;
 }
 
@@ -302,10 +300,8 @@ bool cByteBuffer::ReadBEInt32(Int32 & a_Value)
 	CHECK_THREAD
 	CheckValid();
 	NEEDBYTES(4);
-	UInt32 val;
-	ReadBuf(&val, 4);
-	val = ntohl(val);
-	memcpy(&a_Value, &val, 4);
+	ReadBuf(&a_Value, 4);
+	a_Value = NetworkToHostInt4(&a_Value);
 	return true;
 }
 
@@ -319,7 +315,7 @@ bool cByteBuffer::ReadBEUInt32(UInt32 & a_Value)
 	CheckValid();
 	NEEDBYTES(4);
 	ReadBuf(&a_Value, 4);
-	a_Value = ntohl(a_Value);
+	a_Value = NetworkToHost4(&a_Value);
 	return true;
 }
 
@@ -347,7 +343,7 @@ bool cByteBuffer::ReadBEUInt64(UInt64 & a_Value)
 	CheckValid();
 	NEEDBYTES(8);
 	ReadBuf(&a_Value, 8);
-	a_Value = NetworkToHostULong8(&a_Value);
+	a_Value = NetworkToHost8(&a_Value);
 	return true;
 }
 

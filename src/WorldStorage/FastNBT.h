@@ -260,14 +260,14 @@ public:
 	inline Int16 GetShort(int a_Tag) const
 	{
 		ASSERT(m_Tags[static_cast<size_t>(a_Tag)].m_Type == TAG_Short);
-		return GetBEShort(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
+		return NetworkToHostShort2(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
 	}
 
 	/** Returns the value stored in an Int tag. Not valid for any other tag type. */
 	inline Int32 GetInt(int a_Tag) const
 	{
 		ASSERT(m_Tags[static_cast<size_t>(a_Tag)].m_Type == TAG_Int);
-		return GetBEInt(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
+		return NetworkToHostInt4(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
 	}
 
 	/** Returns the value stored in a Long tag. Not valid for any other tag type. */
@@ -281,31 +281,15 @@ public:
 	inline float GetFloat(int a_Tag) const
 	{
 		ASSERT(m_Tags[static_cast<size_t>(a_Tag)].m_Type == TAG_Float);
-
-		// Cause a compile-time error if sizeof(float) != 4
-		// If your platform produces a compiler error here, you'll need to add code that manually decodes 32-bit floats
-		char Check1[5 - sizeof(float)];  // Fails if sizeof(float) > 4
-		char Check2[sizeof(float) - 3];  // Fails if sizeof(float) < 4
-		UNUSED_VAR(Check1);
-		UNUSED_VAR(Check2);
-
-		Int32 i = GetBEInt(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
-		float f;
-		memcpy(&f, &i, sizeof(f));
-		return f;
+		static_assert(sizeof(float) == 4, "You'll need to add code that manually decodes 32-bit floats");
+		return NetworkToHostFloat4(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
 	}
 
 	/** Returns the value stored in a Double tag. Not valid for any other tag type. */
 	inline double GetDouble(int a_Tag) const
 	{
-		// Cause a compile-time error if sizeof(double) != 8
-		// If your platform produces a compiler error here, you'll need to add code that manually decodes 64-bit doubles
-		char Check1[9 - sizeof(double)];  // Fails if sizeof(double) > 8
-		char Check2[sizeof(double) - 7];  // Fails if sizeof(double) < 8
-		UNUSED_VAR(Check1);
-		UNUSED_VAR(Check2);
-
 		ASSERT(m_Tags[static_cast<size_t>(a_Tag)].m_Type == TAG_Double);
+		static_assert(sizeof(double) == 8, "You'll need to add code that manually decodes 64-bit doubles");
 		return NetworkToHostDouble8(m_Data + m_Tags[static_cast<size_t>(a_Tag)].m_DataStart);
 	}
 
