@@ -3480,22 +3480,17 @@ static int tolua_cServer_TestApiSpeedOld(lua_State * a_LuaState)
 static int tolua_cServer_TestApiSpeedNew(lua_State * a_LuaState)
 {
 	cLuaState L(a_LuaState);
-	cServer * Server;
-	AString Name, Version;
-	UInt32 Protocol;
-	auto self = cLuaStateParams::self(Server);
-	auto staticSelf = cLuaStateParams::staticSelf<cServer>();
-	switch (cLuaStateParams::Read(L,
-		std::tie(self,       Name, Version, Protocol),
-		std::tie(staticSelf, Name, Version, Protocol)
-	))
-	{
-		case 0:
+
+	return cLuaStateParams::Call(L,
+		[](cLuaStateParams::cSelf<cServer>, AString a_Name, AString a_Version, UInt32 Protocol)
 		{
-			// Do nothing
+			return 0;
+		},
+		[](cLuaStateParams::cStaticSelf<cServer>, AString a_Name, AString a_Version, UInt32 Protocol)
+		{
+			return 0;
 		}
-	}
-	return 0;
+	);
 }
 
 
@@ -4030,18 +4025,13 @@ static int tolua_cEntity_GetPosition(lua_State * tolua_S)
 {
 	cLuaState L(tolua_S);
 
-	// Get the params:
-	cEntity * self = reinterpret_cast<cEntity *>(tolua_tousertype(tolua_S, 1, nullptr));
-	if (self == nullptr)
-	{
-		LOGWARNING("%s: invalid self (%p)", __FUNCTION__, static_cast<void *>(self));
-		return 0;
-	}
-
-	L.Push(Mtolua_new((Vector3d)(self->GetPosition())));
-
-	tolua_register_gc(L, lua_gettop(L));  // Make Lua own the object
-	return 1;
+	return cLuaStateParams::Call(L,
+		[&](cLuaStateParams::cSelf<cEntity> self)
+		{
+			L.Push(self->GetPosition());
+			return 1;
+		}
+	);
 }
 
 
