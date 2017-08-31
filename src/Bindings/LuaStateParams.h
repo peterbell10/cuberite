@@ -17,6 +17,119 @@
 
 namespace Detail
 {
+	template <typename... Ts> struct TypeList {};
+
+	template <size_t I, typename Types> struct GetImpl {};
+
+	template <size_t I, typename Head, typename... Tail>
+	struct GetImpl<I, TypeList<Head, Tail...>>:
+		GetImpl<I - 1, TypeList<Tail...>> // Keep iterating over the list
+	{
+	};
+
+	// Terminating case
+	template <typename Head, typename... Tail>
+	struct GetImpl<0, TypeList<Head, Tail...>>
+	{
+		using type = Head;
+	};
+
+	/** Aliases the Ith type in the TypeList Types */
+	template <size_t I, typename Types>
+	using Get = typename GetImpl<I, Types>::type;
+
+
+	
+	// C++14 TODO: Replace with std::index_sequence
+	template <size_t... Is>	struct IndexSequence {};
+
+	/** Append to the end of an IndexSequence */
+	template <typename Sequence, size_t New>
+	struct AppendIndex;
+
+	template <size_t New, size_t... Curr>
+	struct AppendIndex<IndexSequence<Curr...>, New>
+	{
+		using type = IndexSequence<Curr..., New>;
+	};
+
+	template <size_t I>
+	struct MakeIndexSequenceImpl:
+		AppendIndex<typename MakeIndexSequenceImpl<I - 1>::type, I - 1>
+	{
+	};
+
+	template<>
+	struct MakeIndexSequenceImpl<0>
+	{
+		using type = IndexSequence<>;
+	};
+
+	/** Build and IndexSequence of all values from 0 to I - 1 (i.e. IndexSequence<0, 1, .., I-1>) */
+	template <size_t I>
+	using MakeIndexSequence = typename MakeIndexSequenceImpl<I>::type;
+
+
+	// LambdaSignature implementation adapted from the answer to this SO post:
+	// https://stackoverflow.com/questions/11893141/
+
+	template <typename Result, typename... Args>
+	struct SignatureDescription
+	{
+		using ResultType = Result;
+		using ArgumentTypes = TypeList<Args...>;
+	};
+
+	/** Extracts result type and argument types from a pmf type. */
+	template<typename T> struct LambdaSignatureImpl {};
+
+	template<typename C, typename R, typename... A>
+	struct LambdaSignatureImpl<R(C::*)(A...)>:
+		SignatureDescription<R, A...>
+	{
+	};
+
+	template<typename C, typename R, typename... A>
+	struct LambdaSignatureImpl<R(C::*)(A...) const>:
+		SignatureDescription<R, A...>
+	{
+	};
+
+	template<typename C, typename R, typename... A>
+	struct LambdaSignatureImpl<R(C::*)(A...) volatile>:
+		SignatureDescription<R, A...>
+	{
+	};
+
+	template<typename C, typename R, typename... A>
+	struct LambdaSignatureImpl<R(C::*)(A...) const volatile>:
+		SignatureDescription<R, A...>
+	{
+	};
+
+	/** Provides a description of the call signature for T where T has an unambiguous operator().
+	i.e. Must not be overloaded or templated meaning generic lambdas will not work.
+	Provides type aliases:
+		- ResultType: the return type of the function.
+		- ArgumentTypes: a TypeList<> of the argument types of the function. */
+	template<typename T>
+	struct LambdaSignature:
+		// Pass the pmf type of the call operator
+		LambdaSignatureImpl<decltype(&std::remove_reference<T>::type::operator())>
+	{
+	};
+
+
+
+	/** Aliases the given type after stripping references and top level cv qualifiers.*/
+	template <typename T>
+	using RemoveCVR =
+		typename std::remove_cv<
+			typename std::remove_reference<T>::type
+		>::type;
+
+
+
 	/** Utility struct that provides the functionality to cLuaStateParams::GetTypeDescription.
 	Supports decorators such as cLuaStateParams::cSelf<T>.
 	Must be a struct in order to support decorators, and must not be inside a class (gcc / clang complain about that).
@@ -40,118 +153,111 @@ namespace Detail
 
 
 /** A namespace-like class for reading parameters to API functions from Lua, using templates.
-The Read() function is the main entrypoint for this, and does all the work.
+The Call() function is the main entrypoint for this, and does all the work.
 Example usage:
-int Param1, Param2, Param3;
-AString ParamA, ParamB;
-cItem * Item;
-switch (cLuaStateParams::Read(LuaState,
-	std::tie(cLuaStateParams::self(Item), Param1, Param2, Param3),
-	std::tie(cLuaStateParams::self(Item), ParamA, ParamB)
-))
-{
-	case 0:
+int res = cLuaStateParams::Read(LuaState,
+	[](cLuaStateParams::cSelf<cItem> Item, Param1, Param2, Param3)
 	{
-		// The first overload was used; Item, Param1, Param2 and Param3 are valid
 		Item->DoSomething(Param1, Param2, Param3);
-		break;
-	}
-	case 1:
+		return 0;
+	},
+	[](cLuaStateParams::cSelf<cItem> Item, ParamA, ParamB)
 	{
-		// The second overload was used; Item, ParamA and ParamB are valid
 		Item->DoSomething(ParamA, ParamB);
-		break;
+		return 0;
 	}
-	// No need for default: if no overloads match, the function raises a Lua error, returning to the Lua's caller
-}
+);
 */
 class cLuaStateParams
 {
-public:
-	/** A wrapper used in cLuaStateParams::Read() to signalize that the value must be a non-nil pointer when read from Lua. */
+	/** A dumb smart-pointer style wrapper around a bare pointer. */
 	template <typename T>
-	class cNonNil
+	class cWrappedPtr
 	{
-		friend class cLuaStateParams;
-		typedef T * Tptr;
 	public:
 		typedef T ParentType;
+		T * m_Ptr;
 
-		cNonNil(Tptr & a_Dest):
-			m_Dest(a_Dest)
-		{
-		}
+		T & operator * () const { return *m_Ptr; }
 
-	protected:
-		/** The destination pointer where the param will be written. */
-		Tptr & m_Dest;
+		T * operator -> () const { return m_Ptr; }
+
+		T * get() const { return m_Ptr; }
 	};
-	template <typename T> static cNonNil<T> nonNil(T * & a_Dest) { return cNonNil<T>(a_Dest); }
+
+public:
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value must be a non-nil pointer when read from Lua. */
+	template <typename T>
+	class cNonNil:
+		public cWrappedPtr<T>
+	{
+	};
 
 
-	/** A wrapper used in cLuaStateParams::Read() to signalize that the value is a "self" - it must be a non-nil pointer when read from Lua,
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "self" - it must be a non-nil pointer when read from Lua,
 	and has a special error message when mismatched. */
 	template <typename T>
-	class cSelf
+	class cSelf:
+		public cWrappedPtr<T>
 	{
-		friend class cLuaStateParams;
-		typedef T * Tptr;
-	public:
-		typedef T ParentType;
-
-		cSelf(Tptr & a_Self):
-			m_Self(a_Self)
-		{
-		}
-
-	protected:
-		Tptr & m_Self;
 	};
-	template <typename T> static cSelf<T> self(T * & a_Self) { return cSelf<T>(a_Self); }
 
 
-	/** A wrapper used in cLuaState::ReadParams() to signalize that the value is a "static self",
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "static self",
 	it must be the table representing the class T when read from Lua. */
 	template <class T>
-	class cStaticSelf
+	class cStaticSelf:
+		public cWrappedPtr<T>
 	{
-	public:
-		typedef T ParentType;
 	};
-	template <class T> static cStaticSelf<T> staticSelf() { return cStaticSelf<T>(); }
 
 
 
 protected:
 
+	/** Type to bundle the signature information together with the reference itself. */
+	template <typename Lambda>
+	struct LambdaDescription:
+		Detail::LambdaSignature<Lambda>
+	{
+		Lambda && m_Lambda;
+
+		LambdaDescription(Lambda && a_Lambda):
+			m_Lambda{ std::forward<Lambda>(a_Lambda) }
+		{
+		}
+	};
+
+
+	/** Helper to create a LambdaDescription with type deduction. */
+	template <typename Lambda>
+	static LambdaDescription<Lambda> MakeLambdaDesc(Lambda && a_Lambda)
+	{
+		return { std::forward<Lambda>(a_Lambda) };
+	}
+
+
 	/** Attempts to match the params on the Lua stack to the API function overloads given (recursively).
 	a_CurOverload is the index of the currently processed overload (recursion level),
 	Returns the index of the overload that matches the parameters.
 	If no overloads match, returns -1. */
-	template <typename... T1, typename... T2>
-	static int ReadInternal(cLuaState & a_LuaState, int a_CurOverload, const std::tuple<T1...> & a_Ovl, T2 &&... a_OtherParams)
+	template <typename LambdaDesc, typename... OtherLambdaDescs>
+	static int CallInternal(cLuaState & a_LuaState, LambdaDesc a_LD, OtherLambdaDescs... a_OtherLDs)
 	{
 		// Try to read this overload
-		if (ReadSingleOverload(a_LuaState, a_Ovl))
+		if (CheckSingleOverload(a_LuaState, typename LambdaDesc::ArgumentTypes{}))
 		{
-			return a_CurOverload;
+			return CallSingleOverload(a_LuaState, a_LD.m_Lambda, typename LambdaDesc::ArgumentTypes{});
 		}
 
 		// Try the next overload:
-		return ReadInternal(a_LuaState, a_CurOverload + 1, std::forward<T2>(a_OtherParams)...);
+		return CallInternal(a_LuaState, a_OtherLDs...);
 	}
 
 
 	/** Terminator for the template-based recursion of the function above - for a single overload. */
-	template <typename... T1>
-	static int ReadInternal(cLuaState & a_LuaState, int a_CurOverload, const std::tuple<T1...> & a_Ovl)
+	static int CallInternal(cLuaState & a_LuaState)
 	{
-		// Try to read this overload
-		if (ReadSingleOverload(a_LuaState, a_Ovl))
-		{
-			return a_CurOverload;
-		}
-
 		// No more overloads, report failure
 		return -1;
 	}
@@ -159,29 +265,30 @@ protected:
 
 
 	/** Helper struct to implement iterating over std::tuple elements */
-	template <size_t N> struct SizeT {};
+	template <size_t N>
+	using SizeT = std::integral_constant<size_t, N>;
 
 
 
 	/** Attempts to match the params on the Lua stack to the given API function overload.
-	Returns true if successful, false on failure. */
-	template <typename... T>
-	static bool ReadSingleOverload(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload)
+	Returns true if compatible, false if not. */
+	template <typename... Args>
+	static bool CheckSingleOverload(cLuaState & a_LuaState, Detail::TypeList<Args...> a_ArgsTypes)
 	{
 		// Check that there exactly as many params as the tuple items:
-		if (!lua_isnone(a_LuaState, sizeof...(T) + 1))
+		if (!lua_isnone(a_LuaState, sizeof...(Args) + 1))
 		{
 			// Too many params
 			return false;
 		}
-		if (lua_isnone(a_LuaState, sizeof...(T)))
+		if (lua_isnone(a_LuaState, sizeof...(Args)))
 		{
 			// Too few params
 			return false;
 		}
 
 		// Read the tuple, compile-time-recursively:
-		return ReadSingleOverloadRecurse(a_LuaState, a_Overload, SizeT<sizeof...(T)>());
+		return CheckSingleOverloadRecurse(a_LuaState, a_ArgsTypes, SizeT<sizeof...(Args)>());
 	}
 
 
@@ -189,36 +296,68 @@ protected:
 	/** Attempts to match the params on the Lua stack to the given API function overload.
 	The compile-time recursive worker implementation of ReadSingleOverload, recurses by the number of elements in the overload tuple.
 	Returns true on success, false on failure. */
-	template <typename... T, size_t N>
-	static bool ReadSingleOverloadRecurse(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload, SizeT<N>)
+	template <typename... Args, size_t N>
+	static bool CheckSingleOverloadRecurse(cLuaState & a_LuaState, Detail::TypeList<Args...>, SizeT<N>)
 	{
-		// First read the params from the lower tuple indices:
-		if (!ReadSingleOverloadRecurse(a_LuaState, a_Overload, SizeT<N - 1>()))
+		// First check the params from the lower indices:
+		if (!CheckSingleOverloadRecurse(a_LuaState, Detail::TypeList<Args...>{}, SizeT<N - 1>{}))
 		{
 			return false;
 		}
 
-		// Then read the param pointed to by our index:
-		return GetStackValue(a_LuaState, N, std::get<N - 1>(a_Overload));
+		// Then check the params match at our index:
+		using Type = Detail::RemoveCVR<Detail::Get<N - 1, Detail::TypeList<Args...>>>;
+		Type temp;
+		return GetStackValue(a_LuaState, N, temp);
 	}
 
 
 	/** Terminator for the above compile-time-recursive function. */
-	template <typename... T>
-	static bool ReadSingleOverloadRecurse(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload, SizeT<1>)
+	template <typename... Args>
+	static bool CheckSingleOverloadRecurse(cLuaState & a_LuaState, Detail::TypeList<Args...>, SizeT<0>)
 	{
-		return GetStackValue(a_LuaState, 1, std::get<0>(a_Overload));
+		return true;
 	}
 
+	template<typename Lambda, typename Types, size_t... Is>
+	static int CallSingleOverloadImpl(cLuaState & a_LuaState, Lambda && a_Lambda, Types, Detail::IndexSequence<Is...>)
+	{
+		return a_Lambda(GetValue<Is, Types>(a_LuaState)...);
+	}
+
+	template<typename Lambda, typename... Args>
+	static int CallSingleOverload(cLuaState & a_LuaState, Lambda && a_Lambda, Detail::TypeList<Args...>)
+	{
+		return CallSingleOverloadImpl(
+			a_LuaState,
+			std::forward<Lambda>(a_Lambda),
+			Detail::TypeList<Args...>{},
+			Detail::MakeIndexSequence<sizeof...(Args)>{}
+		);
+	}
+
+
+	template <size_t I, typename Types>
+	static auto GetValue(cLuaState & a_LuaState)
+		-> Detail::RemoveCVR<Detail::Get<I, Types>>
+	{
+		using Type = Detail::RemoveCVR<Detail::Get<I, Types>>;
+		Type Val;
+		int StackPos = static_cast<int>(I + 1);  // From 0 based to 1 based indexing
+		bool Succeeded = GetStackValue(a_LuaState, StackPos, Val);
+		UNUSED(Succeeded);
+		ASSERT(Succeeded);  // Should be checked before the call
+		return Val;
+	}
 
 
 	/** Reads one value from the Lua stack.
 	Returns true on success, false on failure.
 	The hard work is delegated into cLuaState that already has this function, but we need to specialize it for decorators (cNonNil, cSelf etc.). */
 	template <typename T>
-	static bool GetStackValue(cLuaState & a_LuaState, int a_StackPos, T && a_ReturnedVal)
+	static bool GetStackValue(cLuaState & a_LuaState, int a_StackPos, T & a_ReturnedVal)
 	{
-		return a_LuaState.GetStackValue(a_StackPos, std::forward<T>(a_ReturnedVal));
+		return a_LuaState.GetStackValue(a_StackPos, a_ReturnedVal);
 	}
 
 
@@ -228,10 +367,10 @@ protected:
 	template <typename T>
 	static bool GetStackValue(cLuaState & a_LuaState, int a_StackPos, cNonNil<T> & a_ReturnedVal)
 	{
-		auto res = GetStackValue(a_LuaState, a_StackPos, a_ReturnedVal.m_Dest);
+		auto res = GetStackValue(a_LuaState, a_StackPos, a_ReturnedVal.m_Ptr);
 		if (res)
 		{
-			if (a_ReturnedVal.m_Dest == nullptr)
+			if (a_ReturnedVal.m_Ptr == nullptr)
 			{
 				return false;
 			}
@@ -246,10 +385,10 @@ protected:
 	template <typename T>
 	static bool GetStackValue(cLuaState & a_LuaState, int a_StackPos, cSelf<T> & a_ReturnedVal)
 	{
-		auto res = GetStackValue(a_LuaState, a_StackPos, a_ReturnedVal.m_Self);
+		auto res = GetStackValue(a_LuaState, a_StackPos, a_ReturnedVal.m_Ptr);
 		if (res)
 		{
-			if (a_ReturnedVal.m_Self == nullptr)
+			if (a_ReturnedVal.m_Ptr == nullptr)
 			{
 				return false;
 			}
@@ -272,10 +411,10 @@ protected:
 
 	/** Raises a Lua error that the parameters don't match the overloads.
 	Builds and logs the whole error message, including the reason why each overload wasn't matched. */
-	template <typename... T>
-	static void RaiseError(cLuaState & a_LuaState, T &&... a_Overloads)
+	template <typename... ArgTypes>
+	static void RaiseError(cLuaState & a_LuaState, ArgTypes...)
 	{
-		auto matcherMsgs = BuildMatcherErrorMessages(a_LuaState, std::forward<T>(a_Overloads)...);
+		auto matcherMsgs = BuildMatcherErrorMessages(a_LuaState, ArgTypes{}...);
 		a_LuaState.ApiParamError("Parameters don't match function signatures:\n%s",
 			StringJoin(matcherMsgs, "\n\t").c_str()
 		);
@@ -285,16 +424,16 @@ protected:
 
 	/** Returns a vector of string, each item representing a single overload's signature
 	and the error message from the matcher why the signature cannot be used. */
-	template <typename... T1, typename... T2>
+	template <typename... Args, typename... OtherOverloads>
 	static AStringVector BuildMatcherErrorMessages(
 		cLuaState & a_LuaState,
-		const std::tuple<T1...> & a_Overload1,
-		T2 &&... a_OtherOverloads
+		Detail::TypeList<Args...>,
+		OtherOverloads...
 	)
 	{
-		auto res = BuildMatcherErrorMessages(a_LuaState, std::forward<T2>(a_OtherOverloads)...);
-		auto signature = BuildSingleOverloadDescription<T1...>();
-		auto msg = GetMatcherErrorMessage(a_LuaState, a_Overload1);
+		auto res = BuildMatcherErrorMessages(a_LuaState, OtherOverloads{}...);
+		auto signature = BuildSingleOverloadDescription<Args...>();
+		auto msg = GetMatcherErrorMessage(a_LuaState, Detail::TypeList<Args...>{});
 		res.emplace_back(std::move(Printf("(%s): %s", signature.c_str(), msg.c_str())));
 		return res;
 	}
@@ -310,7 +449,7 @@ protected:
 
 	/** Returns the error message why the specified overload signature cannot be used for current params. */
 	template <typename... T>
-	static AString GetMatcherErrorMessage(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload)
+	static AString GetMatcherErrorMessage(cLuaState & a_LuaState, Detail::TypeList<T...>)
 	{
 		if (!lua_isnone(a_LuaState, static_cast<int>(sizeof...(T) + 1)))
 		{
@@ -326,7 +465,7 @@ protected:
 				static_cast<unsigned>(sizeof...(T))
 			);
 		}
-		return GetParamMatchError(a_LuaState, a_Overload, SizeT<sizeof...(T)>());
+		return GetParamMatchError(a_LuaState, Detail::TypeList<T...>{}, SizeT<sizeof...(T)>());
 	}
 
 
@@ -335,24 +474,26 @@ protected:
 	Checks each individual param using compile-time recursion.
 	Doesn't check param end (checked by GetMatcherErrorMessage(), which is the only one calling this function). */
 	template <typename... T, size_t N>
-	static AString GetParamMatchError(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload, SizeT<N>)
+	static AString GetParamMatchError(cLuaState & a_LuaState, Detail::TypeList<T...>, SizeT<N>)
 	{
 		// Try to read the param into a dummy variable of the proper type:
-		auto res = CheckValueType(a_LuaState, static_cast<int>(N), std::get<N - 1>(a_Overload));
+		using Type = Detail::RemoveCVR<Detail::Get<N - 1, Detail::TypeList<T...>>>;
+		Type Dummy;
+		auto res = CheckValueType(a_LuaState, static_cast<int>(N), Dummy);
 		if (!res.empty())
 		{
 			return Printf("Parameter %u: %s", static_cast<unsigned>(N), res.c_str());
 		}
 
 		// Reading succeeded, try the next param:
-		return GetParamMatchError(a_LuaState, a_Overload, SizeT<N - 1>());
+		return GetParamMatchError(a_LuaState, Detail::TypeList<T...>{}, SizeT<N - 1>{});
 	}
 
 
 	/** Terminator for the above function
 	We've checked all the params, so this should never be reached. */
 	template <typename... T>
-	static AString GetParamMatchError(cLuaState & a_LuaState, const std::tuple<T...> & a_Overload, SizeT<0>)
+	static AString GetParamMatchError(cLuaState & a_LuaState, Detail::TypeList<T...>, SizeT<0>)
 	{
 		return "[internal matcher error - no reason for mismatch can be found]";
 	}
@@ -366,7 +507,7 @@ protected:
 	static AString CheckValueType(cLuaState & a_LuaState, int a_StackPos, const T & a_Dest)
 	{
 		typename std::remove_reference<T>::type dummy;
-		if (!a_LuaState.GetStackValue(a_StackPos, dummy))
+		if (!GetStackValue(a_LuaState, a_StackPos, dummy))
 		{
 			return Printf("Mismatch, expected %s, got %s",
 				GetTypeDescription<T>().c_str(),
@@ -389,7 +530,7 @@ protected:
 				a_LuaState.GetTypeText(a_StackPos).c_str()
 			);
 		}
-		return CheckValueType(a_LuaState, a_StackPos, a_Dest.m_Dest);
+		return CheckValueType(a_LuaState, a_StackPos, a_Dest.m_Ptr);
 	}
 
 
@@ -405,7 +546,7 @@ protected:
 				a_LuaState.GetTypeText(a_StackPos).c_str()
 			);
 		}
-		return CheckValueType(a_LuaState, a_StackPos, a_Dest.m_Self);
+		return CheckValueType(a_LuaState, a_StackPos, a_Dest.m_Ptr);
 	}
 
 
@@ -493,18 +634,18 @@ public:
 	|  +- cLuaState::ApiParamError
 	+- return [never reached]
 	*/
-	template <typename... OverloadTuples>
-	static int Read(cLuaState & a_LuaState, OverloadTuples &&... a_Overloads)
+	template <typename... OverloadLambdas>
+	static int Call(cLuaState & a_LuaState, OverloadLambdas &&... a_Overloads)
 	{
 		// If the reading succeeded, return success
-		auto res = ReadInternal(a_LuaState, 0, std::forward<OverloadTuples>(a_Overloads)...);
+		auto res = CallInternal(a_LuaState, MakeLambdaDesc(a_Overloads)...);
 		if (res >= 0)
 		{
 			return res;
 		}
 
 		// The reading failed, raise an error:
-		RaiseError(a_LuaState, std::forward<OverloadTuples>(a_Overloads)...);
+		RaiseError(a_LuaState, typename Detail::LambdaSignature<decltype(a_Overloads)>::ArgumentTypes{}...);
 		return 0;  // Never reached, but undefined behavior if not present
 	}
 };
