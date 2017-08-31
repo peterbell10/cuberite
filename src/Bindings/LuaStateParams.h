@@ -24,15 +24,12 @@ namespace Detail
 	template <typename T>
 	struct TypeDescription
 	{
-		static const char * desc()
-		{
-			static_assert(false, "Type is missing a TypeDescription<> template");
-			/* If compiler complains on the previous line, you need to make sure that the type
-			passed as the template parameter to this structure has an appropriate TypeDescription specialization.
-			Usually these are created automatically for all API classes by ToLua++ in the LuaStateParams_TypeDescs.inc file.
-			For basic types, the specializations are below.
-			*/
-		}
+		/* If compiler complains on the previous line, you need to make sure that the type
+		passed as the template parameter to this structure has an appropriate TypeDescription specialization.
+		Usually these are created automatically for all API classes by ToLua++ in the LuaStateParams_TypeDescs.inc file.
+		For basic types, the specializations are below.
+		*/
+		static const char * desc() = delete;
 	};
 
 	// Specializations are defined after the cLuaStateParams class declaration
@@ -372,7 +369,7 @@ protected:
 		if (!a_LuaState.GetStackValue(a_StackPos, dummy))
 		{
 			return Printf("Mismatch, expected %s, got %s",
-				GetTypeDescription<std::remove_reference<T>::type>().c_str(),
+				GetTypeDescription<T>().c_str(),
 				a_LuaState.GetTypeText(a_StackPos).c_str()
 			);
 		}
@@ -388,7 +385,7 @@ protected:
 		if (lua_isnil(a_LuaState, a_StackPos))
 		{
 			return Printf("Expected a non-nil instance of %s, got a nil",
-				GetTypeDescription<std::remove_reference<T>::type>().c_str(),
+				GetTypeDescription<T>().c_str(),
 				a_LuaState.GetTypeText(a_StackPos).c_str()
 			);
 		}
@@ -404,7 +401,7 @@ protected:
 		if (lua_isnil(a_LuaState, a_StackPos))
 		{
 			return Printf("Expected an instance of %s, got a %s. Did you use the right calling convention?",
-				GetTypeDescription<std::remove_reference<T>::type>().c_str(),
+				GetTypeDescription<T>().c_str(),
 				a_LuaState.GetTypeText(a_StackPos).c_str()
 			);
 		}
@@ -418,7 +415,7 @@ protected:
 	static AString CheckValueType(cLuaState & a_LuaState, int a_StackPos, const cStaticSelf<T> & a_Dest)
 	{
 		tolua_Error err;
-		auto type = GetTypeDescription<std::remove_pointer<typename std::remove_reference<T>::type>::type>();
+		auto type = GetTypeDescription<T>();
 		if (lua_isnil(a_LuaState, a_StackPos))
 		{
 			return Printf("Expected the class %s, got a nil", type.c_str());
