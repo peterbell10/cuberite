@@ -212,9 +212,9 @@ void cPluginManager::Tick(float a_Dt)
 	FIND_HOOK(HOOK_TICK);
 	if (Plugins != m_Hooks.end())
 	{
-		for (PluginList::iterator itr = Plugins->second.begin(); itr != Plugins->second.end(); ++itr)
+		for (auto * Plugin : Plugins->second)
 		{
-			(*itr)->Tick(a_Dt);
+			Plugin->Tick(a_Dt);
 		}
 	}
 }
@@ -776,9 +776,9 @@ bool cPluginManager::CallHookPluginsLoaded(void)
 	VERIFY_HOOK;
 
 	bool res = false;
-	for (PluginList::iterator itr = Plugins->second.begin(); itr != Plugins->second.end(); ++itr)
+	for (auto * Plugin : Plugins->second)
 	{
-		res = !(*itr)->OnPluginsLoaded() || res;
+		res = !Plugin->OnPluginsLoaded() || res;
 	}
 	return res;
 }
@@ -1045,9 +1045,9 @@ bool cPluginManager::LoadPlugin(const AString & a_FolderName)
 
 void cPluginManager::RemoveHooks(cPlugin * a_Plugin)
 {
-	for (HookMap::iterator itr = m_Hooks.begin(), end = m_Hooks.end(); itr != end; ++itr)
+	for (auto & Hook : m_Hooks)
 	{
-		itr->second.remove(a_Plugin);
+		Hook.second.remove(a_Plugin);
 	}
 }
 
@@ -1121,9 +1121,9 @@ bool cPluginManager::BindCommand(
 
 bool cPluginManager::ForEachCommand(cCommandEnumCallback & a_Callback)
 {
-	for (CommandMap::iterator itr = m_Commands.begin(), end = m_Commands.end(); itr != end; ++itr)
+	for (auto & itr : m_Commands)
 	{
-		if (a_Callback.Command(itr->first, itr->second.m_Plugin, itr->second.m_Permission, itr->second.m_HelpString))
+		if (a_Callback.Command(itr.first, itr.second.m_Plugin, itr.second.m_Permission, itr.second.m_HelpString))
 		{
 			return false;
 		}
@@ -1228,9 +1228,9 @@ bool cPluginManager::BindConsoleCommand(
 
 bool cPluginManager::ForEachConsoleCommand(cCommandEnumCallback & a_Callback)
 {
-	for (CommandMap::iterator itr = m_ConsoleCommands.begin(), end = m_ConsoleCommands.end(); itr != end; ++itr)
+	for (auto & itr : m_ConsoleCommands)
 	{
-		if (a_Callback.Command(itr->first, itr->second.m_Plugin, "", itr->second.m_HelpString))
+		if (a_Callback.Command(itr.first, itr.second.m_Plugin, "", itr.second.m_HelpString))
 		{
 			return false;
 		}
@@ -1290,14 +1290,14 @@ bool cPluginManager::ExecuteConsoleCommand(const AStringVector & a_Split, cComma
 
 void cPluginManager::TabCompleteCommand(const AString & a_Text, AStringVector & a_Results, cPlayer * a_Player)
 {
-	for (CommandMap::iterator itr = m_Commands.begin(), end = m_Commands.end(); itr != end; ++itr)
+	for (auto & Command : m_Commands)
 	{
-		if (NoCaseCompare(itr->first.substr(0, a_Text.length()), a_Text) != 0)
+		if (NoCaseCompare(Command.first.substr(0, a_Text.length()), a_Text) != 0)
 		{
 			// Command name doesn't match
 			continue;
 		}
-		if ((a_Player != nullptr) && !a_Player->HasPermission(itr->second.m_Permission))
+		if ((a_Player != nullptr) && !a_Player->HasPermission(Command.second.m_Permission))
 		{
 			// Player doesn't have permission for the command
 			continue;
@@ -1314,7 +1314,7 @@ void cPluginManager::TabCompleteCommand(const AString & a_Text, AStringVector & 
 		"/time set day". Or in other words, the position of the last space (separator)
 		in the strings must be equal or string::npos for both. */
 		size_t LastSpaceInText = a_Text.find_last_of(' ') + 1;
-		size_t LastSpaceInSuggestion = itr->first.find_last_of(' ') + 1;
+		size_t LastSpaceInSuggestion = Command.first.find_last_of(' ') + 1;
 
 		if (LastSpaceInText != LastSpaceInSuggestion)
 		{
@@ -1322,7 +1322,7 @@ void cPluginManager::TabCompleteCommand(const AString & a_Text, AStringVector & 
 			continue;
 		}
 
-		a_Results.push_back(itr->first.substr(LastSpaceInSuggestion));
+		a_Results.push_back(Command.first.substr(LastSpaceInSuggestion));
 	}
 }
 
