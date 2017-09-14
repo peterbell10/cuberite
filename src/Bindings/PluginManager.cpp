@@ -229,11 +229,14 @@ bool cPluginManager::GenericCallHook(bool (cPlugin::*a_HookFunction)(PmfArgs...)
 	FIND_HOOK(HookName);
 	VERIFY_HOOK;
 
-	return std::any_of(Plugins->second.begin(), Plugins->second.end(), [&](cPlugin * a_Plugin)
+	for (auto * Plugin : Plugins->second)
+	{
+		if ((Plugin->*a_HookFunction)(a_Args...))
 		{
-			return (a_Plugin->*a_HookFunction)(a_Args...);
+			return true;
 		}
-	);
+	}
+	return false;
 }
 
 
@@ -521,7 +524,7 @@ bool cPluginManager::CallHookHopperPushingItem(cWorld & a_World, cHopperEntity &
 
 bool cPluginManager::CallHookKilled(cEntity & a_Victim, TakeDamageInfo & a_TDI, AString & a_DeathMessage)
 {
-	return GenericCallHook<HOOK_KILLED>(&cPlugin::OnKilled,	a_Victim, a_TDI, a_DeathMessage);
+	return GenericCallHook<HOOK_KILLED>(&cPlugin::OnKilled, a_Victim, a_TDI, a_DeathMessage);
 }
 
 
