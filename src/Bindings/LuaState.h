@@ -41,13 +41,38 @@ extern "C"
 #include "../Defines.h"
 #include "../FunctionRef.h"
 #include "PluginManager.h"
-#include "LuaState_Typedefs.inc"
+#include "tolua++/include/tolua++.h"
 
 // fwd:
 class cLuaServerHandle;
 class cLuaTCPLink;
 class cLuaUDPEndpoint;
 class cDeadlockDetect;
+#include "LuaState_Declaration.inc"
+
+
+
+
+
+namespace Detail
+{
+	/** Utility struct that provides a way to get the type string for a type.
+	Must be a struct in order to support partial specialization and must not be inside a class (gcc / clang complain about that).
+	The general declaration must not be used by the code, all types need a specialization returning the correct type. */
+	template <typename T>
+	struct TypeDescription
+	{
+		/* If compiler complains on the following line, you need to make sure that the type
+		passed as the template parameter to this structure has an appropriate TypeDescription specialization.
+		Usually these are created automatically for all API classes by ToLua++ in the LuaStateParams_TypeDescs.inc file.
+		For basic types, the specializations are below.
+		*/
+		static const char * desc() = delete;
+	};
+
+	// Include the TypeDecription<T> specializations generated for all known API classes:
+	#include "LuaState_TypeDescs.inc"
+}
 
 
 
@@ -695,6 +720,39 @@ public:
 		return GetStackValue(a_StackPos, a_ReturnedVal.GetDest());
 	}
 
+	template <typename T>
+	void Push(T * a_Value)
+	{
+		ASSERT(IsValid());
+		tolua_pushusertype(m_LuaState, a_Value, Detail::TypeDescription<T>::desc());
+	}
+
+	template <typename T>
+	void Push(const T * a_Value)
+	{
+		ASSERT(IsValid());
+		tolua_pushusertype(m_LuaState, const_cast<T*>(a_Value), Detail::TypeDescription<T>::desc());
+	}
+
+	template <typename T>
+	bool GetStackValue(int a_StackPos, T *& a_ReturnedVal)
+	{
+		ASSERT(IsValid());
+		if (lua_isnil(m_LuaState, a_StackPos))
+		{
+			a_ReturnedVal = nullptr;
+			return false;
+		}
+		tolua_Error err;
+		if (tolua_isusertype(m_LuaState, a_StackPos, Detail::TypeDescription<T>::desc(), false, &err))
+		{
+			a_ReturnedVal = *(static_cast<T **>(lua_touserdata(m_LuaState, a_StackPos)));
+			return true;
+		}
+		return false;
+	}
+
+
 	/** Pushes the named value in the table at the top of the stack.
 	a_Name may be a path containing multiple table levels, such as "cChatColor.Blue".
 	If the value is found, it is pushed on top of the stack and the returned cStackValue is valid.
@@ -732,9 +790,6 @@ public:
 		// Get the named global:
 		return GetNamedValue(a_Name, a_Value);
 	}
-
-	// Include the auto-generated Push and GetStackValue() functions:
-	#include "LuaState_Declaration.inc"
 
 	/** Call the specified Lua function.
 	Returns true if call succeeded, false if there was an error.

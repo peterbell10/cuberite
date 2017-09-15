@@ -1,4 +1,4 @@
-﻿
+
 #include "Globals.h"  // NOTE: MSVC stupidness requires this to be the same across all modules
 
 #include "ManualBindings.h"
@@ -1717,7 +1717,7 @@ public:
 	) override
 	{
 		AString content, contentType;
-		return m_Callback.Call(const_cast<HTTPRequest *>(&a_Request), a_UrlPath, cLuaState::Return, a_Content, a_ContentType);
+		return m_Callback.Call(&a_Request, a_UrlPath, cLuaState::Return, a_Content, a_ContentType);
 	}
 };
 
@@ -3345,8 +3345,7 @@ static int tolua_cRoot_GetBrewingRecipe(lua_State * tolua_S)
 	}
 
 	// Push the output item
-	cItem & OutItem = const_cast<cItem &>(Recipe->Output);
-	L.Push(&OutItem);
+	L.Push(&Recipe->Output);
 	return 1;
 }
 
