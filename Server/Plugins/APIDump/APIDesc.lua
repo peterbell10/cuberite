@@ -1641,6 +1641,29 @@ end
 							Type = "string",
 						},
 						{
+							Name = "Position",
+							Type = "Vector3d",
+						},
+						{
+							Name = "Volume",
+							Type = "number",
+						},
+						{
+							Name = "Pitch",
+							Type = "number",
+						},
+					},
+					Notes = "Sends a sound effect request to the client. The sound is played at the specified coords, with the specified volume (a float, 1.0 is full volume, can be more) and pitch (0-255, 63 is 100%)",
+				},
+				SendSoundEffect =
+				{
+					Params =
+					{
+						{
+							Name = "SoundName",
+							Type = "string",
+						},
+						{
 							Name = "X",
 							Type = "number",
 						},
@@ -1661,7 +1684,7 @@ end
 							Type = "number",
 						},
 					},
-					Notes = "Sends a sound effect request to the client. The sound is played at the specified coords, with the specified volume (a float, 1.0 is full volume, can be more) and pitch (0-255, 63 is 100%)",
+					Notes = "Sends a sound effect request to the client. The sound is played at the specified coords, with the specified volume (a float, 1.0 is full volume, can be more) and pitch (0-255, 63 is 100%) (DEPRECATED, use vector-parametered version instead)",
 				},
 				SendTitleTimes =
 				{
@@ -16953,6 +16976,24 @@ end
 						},
 					},
 					Notes = "Returns true if the specified item type is any kind of a hoe.",
+				},
+				IsHorseArmor=
+				{
+					IsStatic = true,
+					Params =
+					{
+						{
+							Name = "ItemType",
+							Type = "number",
+						},
+					},
+					Returns =
+					{
+						{
+							Type = "boolean",
+						},
+					},
+					Notes = "Returns true if the specified item type is any kind of a horse armor.",
 				},
 				IsLeggings =
 				{

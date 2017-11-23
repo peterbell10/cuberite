@@ -48,6 +48,7 @@ Implements the 1.9 protocol classes:
 
 #include "../Mobs/IncludeAllMonsters.h"
 #include "../UI/Window.h"
+#include "../UI/HorseWindow.h"
 
 #include "../BlockEntities/BeaconEntity.h"
 #include "../BlockEntities/CommandBlockEntity.h"
@@ -161,7 +162,7 @@ cProtocol_1_9_0::cProtocol_1_9_0(cClientHandle * a_Client, const AString & a_Ser
 		}
 		else
 		{
-			LOG("Unknown additional data sent in server address (BungeeCord/FML?): " SIZE_T_FMT " parameters", Params.size());
+			LOG("Unknown additional data sent in server address (BungeeCord/FML?): %zu parameters", Params.size());
 			// TODO: support FML + BungeeCord? (what parameters does it send in that case?) https://github.com/SpigotMC/BungeeCord/issues/899
 		}
 	}
@@ -1723,7 +1724,8 @@ void cProtocol_1_9_0::SendWindowOpen(const cWindow & a_Window)
 
 	if (a_Window.GetWindowType() == cWindow::wtAnimalChest)
 	{
-		Pkt.WriteBEInt32(0);  // TODO: The animal's EntityID
+		UInt32 HorseID = static_cast<const cHorseWindow &>(a_Window).GetHorseID();
+		Pkt.WriteBEInt32(static_cast<Int32>(HorseID));
 	}
 }
 
@@ -1910,7 +1912,7 @@ void cProtocol_1_9_0::AddReceivedData(const char * a_Data, size_t a_Size)
 			ASSERT(m_ReceivedData.GetReadableSpace() == OldReadableSpace);
 			AString Hex;
 			CreateHexDump(Hex, AllData.data(), AllData.size(), 16);
-			m_CommLogFile.Printf("Incoming data, " SIZE_T_FMT " (0x" SIZE_T_FMT_HEX ") unparsed bytes already present in buffer:\n%s\n",
+			m_CommLogFile.Printf("Incoming data, %zu (0x%zx) unparsed bytes already present in buffer:\n%s\n",
 				AllData.size(), AllData.size(), Hex.c_str()
 			);
 		}
@@ -2051,14 +2053,14 @@ void cProtocol_1_9_0::AddReceivedData(const char * a_Data, size_t a_Size)
 		if (bb.GetReadableSpace() != 1)
 		{
 			// Read more or less than packet length, report as error
-			LOGWARNING("Protocol 1.9: Wrong number of bytes read for packet 0x%x, state %d. Read " SIZE_T_FMT " bytes, packet contained %u bytes",
+			LOGWARNING("Protocol 1.9: Wrong number of bytes read for packet 0x%x, state %d. Read %zu bytes, packet contained %u bytes",
 				PacketType, m_State, bb.GetUsedSpace() - bb.GetReadableSpace(), PacketLen
 			);
 
 			// Put a message in the comm log:
 			if (g_ShouldLogCommIn && m_CommLogFile.IsOpen())
 			{
-				m_CommLogFile.Printf("^^^^^^ Wrong number of bytes read for this packet (exp %d left, got " SIZE_T_FMT " left) ^^^^^^\n\n\n",
+				m_CommLogFile.Printf("^^^^^^ Wrong number of bytes read for this packet (exp %d left, got %zu left) ^^^^^^\n\n\n",
 					1, bb.GetReadableSpace()
 				);
 				m_CommLogFile.Flush();
@@ -2080,7 +2082,7 @@ void cProtocol_1_9_0::AddReceivedData(const char * a_Data, size_t a_Size)
 		ASSERT(m_ReceivedData.GetReadableSpace() == OldReadableSpace);
 		AString Hex;
 		CreateHexDump(Hex, AllData.data(), AllData.size(), 16);
-		m_CommLogFile.Printf("Protocol 1.9: There are " SIZE_T_FMT " (0x" SIZE_T_FMT_HEX ") bytes of non-parse-able data left in the buffer:\n%s",
+		m_CommLogFile.Printf("Protocol 1.9: There are %zu (0x%zx) bytes of non-parse-able data left in the buffer:\n%s",
 			m_ReceivedData.GetReadableSpace(), m_ReceivedData.GetReadableSpace(), Hex.c_str()
 		);
 		m_CommLogFile.Flush();
@@ -2517,6 +2519,7 @@ void cProtocol_1_9_0::HandlePacketEntityAction(cByteBuffer & a_ByteBuffer)
 		case 2: m_Client->HandleEntityLeaveBed(PlayerID);         break;  // Leave Bed
 		case 3: m_Client->HandleEntitySprinting(PlayerID, true);  break;  // Start sprinting
 		case 4: m_Client->HandleEntitySprinting(PlayerID, false); break;  // Stop sprinting
+		case 7: m_Client->HandleOpenHorseInventory(PlayerID);     break;  // Open horse inventory
 	}
 }
 
@@ -3026,7 +3029,7 @@ void cProtocol_1_9_0::ParseItemMetadata(cItem & a_Item, const AString & a_Metada
 	{
 		AString HexDump;
 		CreateHexDump(HexDump, a_Metadata.data(), std::max<size_t>(a_Metadata.size(), 1024), 16);
-		LOGWARNING("Cannot parse NBT item metadata: %s at (" SIZE_T_FMT " / " SIZE_T_FMT " bytes)\n%s",
+		LOGWARNING("Cannot parse NBT item metadata: %s at (%zu / %zu bytes)\n%s",
 			NBT.GetErrorCode().message().c_str(), NBT.GetErrorPos(), a_Metadata.size(), HexDump.c_str()
 		);
 		return;
@@ -3434,6 +3437,7 @@ void cProtocol_1_9_0::WriteItem(cPacketizer & a_Pkt, const cItem & a_Item)
 				case cEntityEffect::effInstantDamage: PotionID = "harming"; break;
 				case cEntityEffect::effWaterBreathing: PotionID = "water_breathing"; break;
 				case cEntityEffect::effInvisibility: PotionID = "invisibility"; break;
+				default: ASSERT(!"Unknown potion effect"); break;
 			}
 			if (cEntityEffect::GetPotionEffectIntensity(a_Item.m_ItemDamage) == 1)
 			{
@@ -3835,6 +3839,26 @@ void cProtocol_1_9_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 			break;
 		}  // case mtBat
 
+		case mtChicken:
+		{
+			auto & Chicken = reinterpret_cast<const cChicken &>(a_Mob);
+
+			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
+			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
+			a_Pkt.WriteBool(Chicken.IsBaby());
+			break;
+		}  // case mtChicken
+
+		case mtCow:
+		{
+			auto & Cow = reinterpret_cast<const cCow &>(a_Mob);
+
+			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
+			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
+			a_Pkt.WriteBool(Cow.IsBaby());
+			break;
+		}  // case mtCow
+
 		case mtCreeper:
 		{
 			auto & Creeper = reinterpret_cast<const cCreeper &>(a_Mob);
@@ -3949,26 +3973,6 @@ void cProtocol_1_9_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 			break;
 		}  // case mtOcelot
 
-		case mtCow:
-		{
-			auto & Cow = reinterpret_cast<const cCow &>(a_Mob);
-
-			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
-			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
-			a_Pkt.WriteBool(Cow.IsBaby());
-			break;
-		}  // case mtCow
-
-		case mtChicken:
-		{
-			auto & Chicken = reinterpret_cast<const cChicken &>(a_Mob);
-
-			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
-			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
-			a_Pkt.WriteBool(Chicken.IsBaby());
-			break;
-		}  // case mtChicken
-
 		case mtPig:
 		{
 			auto & Pig = reinterpret_cast<const cPig &>(a_Mob);
@@ -3983,6 +3987,19 @@ void cProtocol_1_9_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 			break;
 		}  // case mtPig
+
+		case mtRabbit:
+		{
+			auto & Rabbit = reinterpret_cast<const cRabbit &>(a_Mob);
+			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
+			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
+			a_Pkt.WriteBool(Rabbit.IsBaby());
+
+			a_Pkt.WriteBEUInt8(12);  // Index 12: Type
+			a_Pkt.WriteBEUInt8(METADATA_TYPE_VARINT);
+			a_Pkt.WriteVarInt32(static_cast<UInt32>(Rabbit.GetRabbitType()));
+			break;
+		}  // case mtRabbit
 
 		case mtSheep:
 		{
@@ -4003,19 +4020,6 @@ void cProtocol_1_9_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 			a_Pkt.WriteBEInt8(SheepMetadata);
 			break;
 		}  // case mtSheep
-
-		case mtRabbit:
-		{
-			auto & Rabbit = reinterpret_cast<const cRabbit &>(a_Mob);
-			a_Pkt.WriteBEUInt8(11);  // Index 11: Is baby
-			a_Pkt.WriteBEUInt8(METADATA_TYPE_BOOL);
-			a_Pkt.WriteBool(Rabbit.IsBaby());
-
-			a_Pkt.WriteBEUInt8(12);  // Index 12: Type
-			a_Pkt.WriteBEUInt8(METADATA_TYPE_VARINT);
-			a_Pkt.WriteVarInt32(static_cast<UInt32>(Rabbit.GetRabbitType()));
-			break;
-		}  // case mtRabbit
 
 		case mtSkeleton:
 		{
@@ -4131,6 +4135,8 @@ void cProtocol_1_9_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 			a_Pkt.WriteBool(ZombiePigman.IsBaby());
 			break;
 		}  // case mtZombiePigman
+
+		default: break;
 	}  // switch (a_Mob.GetType())
 }
 

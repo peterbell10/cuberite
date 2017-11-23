@@ -58,10 +58,7 @@ SET (HDRS
 	ItemAxe.h
 )
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set_source_files_properties(ItemHandler.cpp PROPERTIES COMPILE_FLAGS "-Wno-error=switch-enum")
-endif()
-
 if(NOT MSVC)
 	add_library(Items ${SRCS} ${HDRS})
+	target_link_libraries(Items fmt::fmt)
 endif()

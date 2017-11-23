@@ -60,11 +60,7 @@ SET (HDRS
 	ThrownSnowballEntity.h
 	WitherSkullEntity.h)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set_source_files_properties(Entity.cpp PROPERTIES COMPILE_FLAGS "-Wno-error=global-constructors")
-endif()
-
 if(NOT MSVC)
 	add_library(Entities ${SRCS} ${HDRS})
-	target_link_libraries(Entities WorldStorage)
+	target_link_libraries(Entities fmt::fmt WorldStorage)
 endif()

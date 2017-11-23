@@ -452,14 +452,15 @@ void cChunk::WriteBlockArea(cBlockArea & a_Area, int a_MinBlockX, int a_MinBlock
 	}  // for y
 
 	// Erase all affected block entities:
-	cCuboid affectedArea(
-		{OffX, a_MinBlockY, OffZ},
-		{OffX + SizeX - 1, a_MinBlockY + SizeY - 1, OffZ + SizeZ - 1}
+	cCuboid affectedArea(  // In world coordinates
+		{BlockStartX, a_MinBlockY, BlockStartZ},
+		{BlockEndX, a_MinBlockY + SizeY - 1, BlockEndZ}
 	);
 	for (auto itr = m_BlockEntities.begin(); itr != m_BlockEntities.end();)
 	{
 		if (affectedArea.IsInside(itr->second->GetPos()))
 		{
+			delete itr->second;
 			itr = m_BlockEntities.erase(itr);
 		}
 		else
@@ -494,7 +495,7 @@ void cChunk::WriteBlockArea(cBlockArea & a_Area, int a_MinBlockX, int a_MinBlock
 			auto clone = be->Clone(posX, posY, posZ);
 			clone->SetWorld(m_World);
 			AddBlockEntityClean(clone);
-			BroadcastBlockEntity(posX, posY, posZ);
+			BroadcastBlockEntity({posX, posY, posZ});
 		}
 	}
 }
@@ -1942,7 +1943,7 @@ bool cChunk::SetSignLines(int a_PosX, int a_PosY, int a_PosZ, const AString & a_
 	MarkDirty();
 	auto Sign = static_cast<cSignEntity *>(Entity);
 	Sign->SetLines(a_Line1, a_Line2, a_Line3, a_Line4);
-	m_World->BroadcastBlockEntity(a_PosX, a_PosY, a_PosZ);
+	m_World->BroadcastBlockEntity({a_PosX, a_PosY, a_PosZ});
 	return true;
 }
 
@@ -2697,7 +2698,7 @@ void cChunk::BroadcastUnleashEntity(const cEntity & a_Entity)
 
 
 
-void cChunk::BroadcastBlockAction(int a_BlockX, int a_BlockY, int a_BlockZ, char a_Byte1, char a_Byte2, BLOCKTYPE a_BlockType, const cClientHandle * a_Exclude)
+void cChunk::BroadcastBlockAction(Vector3i a_BlockPos, char a_Byte1, char a_Byte2, BLOCKTYPE a_BlockType, const cClientHandle * a_Exclude)
 {
 	for (auto itr = m_LoadedByClient.begin(); itr != m_LoadedByClient.end(); ++itr)
 	{
@@ -2705,7 +2706,7 @@ void cChunk::BroadcastBlockAction(int a_BlockX, int a_BlockY, int a_BlockZ, char
 		{
 			continue;
 		}
-		(*itr)->SendBlockAction(a_BlockX, a_BlockY, a_BlockZ, a_Byte1, a_Byte2, a_BlockType);
+		(*itr)->SendBlockAction(a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, a_Byte1, a_Byte2, a_BlockType);
 	}  // for itr - LoadedByClient[]
 }
 
@@ -2713,7 +2714,7 @@ void cChunk::BroadcastBlockAction(int a_BlockX, int a_BlockY, int a_BlockZ, char
 
 
 
-void cChunk::BroadcastBlockBreakAnimation(UInt32 a_EntityID, int a_BlockX, int a_BlockY, int a_BlockZ, char a_Stage, const cClientHandle * a_Exclude)
+void cChunk::BroadcastBlockBreakAnimation(UInt32 a_EntityID, Vector3i a_BlockPos, char a_Stage, const cClientHandle * a_Exclude)
 {
 	for (auto itr = m_LoadedByClient.begin(); itr != m_LoadedByClient.end(); ++itr)
 	{
@@ -2721,7 +2722,7 @@ void cChunk::BroadcastBlockBreakAnimation(UInt32 a_EntityID, int a_BlockX, int a
 		{
 			continue;
 		}
-		(*itr)->SendBlockBreakAnim(a_EntityID, a_BlockX, a_BlockY, a_BlockZ, a_Stage);
+		(*itr)->SendBlockBreakAnim(a_EntityID, a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, a_Stage);
 	}  // for itr - LoadedByClient[]
 }
 
@@ -2729,10 +2730,10 @@ void cChunk::BroadcastBlockBreakAnimation(UInt32 a_EntityID, int a_BlockX, int a
 
 
 
-void cChunk::BroadcastBlockEntity(int a_BlockX, int a_BlockY, int a_BlockZ, const cClientHandle * a_Exclude)
+void cChunk::BroadcastBlockEntity(Vector3i a_BlockPos, const cClientHandle * a_Exclude)
 {
 	// We can operate on entity pointers, we're inside the ChunkMap's CS lock which guards the list
-	cBlockEntity * Entity = GetBlockEntity(a_BlockX, a_BlockY, a_BlockZ);
+	cBlockEntity * Entity = GetBlockEntity(a_BlockPos);
 	if (Entity == nullptr)
 	{
 		return;
@@ -2987,7 +2988,7 @@ void cChunk::BroadcastRemoveEntityEffect(const cEntity & a_Entity, int a_EffectI
 
 
 
-void cChunk::BroadcastSoundEffect(const AString & a_SoundName, double a_X, double a_Y, double a_Z, float a_Volume, float a_Pitch, const cClientHandle * a_Exclude)
+void cChunk::BroadcastSoundEffect(const AString & a_SoundName, Vector3d a_Position, float a_Volume, float a_Pitch, const cClientHandle * a_Exclude)
 {
 	for (auto itr = m_LoadedByClient.begin(); itr != m_LoadedByClient.end(); ++itr)
 	{
@@ -2995,7 +2996,7 @@ void cChunk::BroadcastSoundEffect(const AString & a_SoundName, double a_X, doubl
 		{
 			continue;
 		}
-		(*itr)->SendSoundEffect(a_SoundName, a_X, a_Y, a_Z, a_Volume, a_Pitch);
+		(*itr)->SendSoundEffect(a_SoundName, a_Position, a_Volume, a_Pitch);
 	}  // for itr - LoadedByClient[]
 }
 
@@ -3035,7 +3036,7 @@ void cChunk::BroadcastSpawnEntity(cEntity & a_Entity, const cClientHandle * a_Ex
 
 
 
-void cChunk::BroadcastThunderbolt(int a_BlockX, int a_BlockY, int a_BlockZ, const cClientHandle * a_Exclude)
+void cChunk::BroadcastThunderbolt(Vector3i a_BlockPos, const cClientHandle * a_Exclude)
 {
 	for (auto itr = m_LoadedByClient.begin(); itr != m_LoadedByClient.end(); ++itr)
 	{
@@ -3043,7 +3044,7 @@ void cChunk::BroadcastThunderbolt(int a_BlockX, int a_BlockY, int a_BlockZ, cons
 		{
 			continue;
 		}
-		(*itr)->SendThunderbolt(a_BlockX, a_BlockY, a_BlockZ);
+		(*itr)->SendThunderbolt(a_BlockPos.x, a_BlockPos.y, a_BlockPos.z);
 	}  // for itr - LoadedByClient[]
 }
 

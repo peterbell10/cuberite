@@ -1,25 +1,26 @@
-Cuberite [![Build Status](https://img.shields.io/travis/cuberite/cuberite/master.svg?style=flat)](https://travis-ci.org/cuberite/cuberite) [![Circle CI Build Status](https://circleci.com/gh/cuberite/cuberite.svg?&style=shield
-)](https://circleci.com/gh/cuberite/cuberite) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/cuberite/cuberite?svg=true)](https://ci.appveyor.com/project/madmaxoft/mcserver)
-========
+# Cuberite
+
+[![Build Status](https://img.shields.io/travis/cuberite/cuberite/master.svg?label=Travis)](https://travis-ci.org/cuberite/cuberite)
+[![Circle CI Build Status](https://img.shields.io/circleci/project/github/cuberite/cuberite/master.svg?label=Circle)](https://circleci.com/gh/cuberite/cuberite)
+[![AppVeyor Build Status](https://img.shields.io/appveyor/ci/madmaxoft/mcserver/master.svg?label=AppVeyor)](https://ci.appveyor.com/project/madmaxoft/mcserver)
 
 Cuberite is a Minecraft-compatible multiplayer game server that is written in C++ and designed to be efficient with memory and CPU, as well as having a flexible Lua Plugin API. Cuberite is compatible with the vanilla Minecraft client.
 
 Cuberite can run on Windows, *nix and Android operating systems. This includes Android phones and tablets as well as Raspberry Pis.
 
-We currently support Release 1.8 - 1.12.1 Minecraft protocol versions.
+We currently support Release 1.8 - 1.12.2 Minecraft protocol versions.
 
 Subscribe to [the newsletter][1] for important updates and project news.
 
-Installation
-------------
+## Installation
 
 There are several ways to obtain Cuberite.
 
 ### Binaries
 
- - The easiest method is downloading for Windows or Linux from the [website][2].
- - You can use the EasyInstall script for Linux and macOS, which automatically downloads the correct binary. The script is described below.
- - You can also obtain a binary from the [buildserver archive][3].
+- The easiest method is downloading for Windows or Linux from the [website][2].
+- You can use the EasyInstall script for Linux and macOS, which automatically downloads the correct binary. The script is described below.
+- You can also obtain a binary from the [buildserver archive][3].
 
 #### The EasyInstall script
 
@@ -29,8 +30,8 @@ This script will download the correct binary from the project site.
 
 ### Compiling
 
- - You can compile automatically for Linux, macOS and FreeBSD with the `compile.sh` script. The script is described below.
- - You can also compile manually. See [COMPILING.md][4].
+- You can compile automatically for Linux, macOS and FreeBSD with the `compile.sh` script. The script is described below.
+- You can also compile manually. See [COMPILING.md][4].
 
 Compiling may provide better performance (1.5-3x as fast) and it supports more operating systems.
 
@@ -38,14 +39,19 @@ Compiling may provide better performance (1.5-3x as fast) and it supports more o
 
 This script downloads the source code and compiles it. The script is smart enough to notify you of missing dependencies and instructing you on how to install them. The script doesn't work for Windows.
 
+Using curl:
+
+    sh -c "$(curl -sSfL -o - https://compile.cuberite.org)"
+
+Or using wget:
+
     sh -c "$(wget -O - https://compile.cuberite.org)"
 
 ### Hosted services
 
- - Hosted Cuberite is available via [Gamocosm][5].
+- Hosted Cuberite is available via [Gamocosm][5].
 
-Contributing
-------------
+## Contributing
 
 Cuberite is licensed under the Apache License V2, and we welcome anybody to fork and submit a Pull Request back with their changes, and if you want to join as a permanent member we can add you to the team.
 
@@ -57,12 +63,11 @@ If you are not a programmer, you can help by testing Cuberite and reporting bugs
 
 You can also help with documentation by contributing to the [User's Manual][12].
 
-Other Stuff
------------
+## Other Stuff
 
 For other stuff, check out the [homepage][13], the [Users' Manual][14], the [forums][15], and the [Plugin API][16].
 
-[Support Us on Bountysource][17]
+Support Us on [Liberapay][17] or [Bountysource][18]
 
 [1]: https://cuberite.org/news/#subscribe
 [2]: https://cuberite.org/
@@ -80,4 +85,5 @@ For other stuff, check out the [homepage][13], the [Users' Manual][14], the [for
 [14]: https://book.cuberite.org/
 [15]: https://forum.cuberite.org/
 [16]: https://api.cuberite.org/
-[17]: https://bountysource.com/teams/cuberite
+[17]: https://liberapay.com/Cuberite
+[18]: https://bountysource.com/teams/cuberite

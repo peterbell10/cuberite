@@ -205,6 +205,7 @@ public:  // tolua_export
 	void SendSetTitle                   (const cCompositeChat & a_Title);  // tolua_export
 	void SendSetRawTitle                (const AString & a_Title);  // tolua_export
 	void SendSoundEffect                (const AString & a_SoundName, double a_X, double a_Y, double a_Z, float a_Volume, float a_Pitch);  // tolua_export
+	void SendSoundEffect                (const AString & a_SoundName, Vector3d a_Position, float a_Volume, float a_Pitch);  // tolua_export
 	void SendSoundParticleEffect        (const EffectID a_EffectID, int a_SrcX, int a_SrcY, int a_SrcZ, int a_Data);
 	void SendSpawnFallingBlock          (const cFallingBlock & a_FallingBlock);
 	void SendSpawnMob                   (const cMonster & a_Mob);
@@ -336,6 +337,10 @@ public:  // tolua_export
 	/** Called when the protocol receives a MC|TrSel packet, indicating that the player used a trade in
 	the NPC UI. */
 	void HandleNPCTrade(int a_SlotNum);
+
+	/** Handles a player opening their inventory while riding a horse.
+	@param a_EntityID ID of the player that is to open the inventory. Should be the same as GetPlayer()->GetUniqueID().  */
+	void HandleOpenHorseInventory(UInt32 a_EntityID);
 
 	void HandlePing             (void);
 	void HandlePlayerAbilities  (bool a_CanFly, bool a_IsFlying, float FlyingSpeed, float WalkingSpeed);

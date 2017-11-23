@@ -1,4 +1,4 @@
-﻿
+
 #include "Globals.h"  // NOTE: MSVC stupidness requires this to be the same across all modules
 
 #include "MobSpawnerEntity.h"
@@ -122,7 +122,7 @@ bool cMobSpawnerEntity::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 void cMobSpawnerEntity::ResetTimer(void)
 {
 	m_SpawnDelay = GetRandomProvider().RandInt<short>(200, 800);
-	m_World->BroadcastBlockEntity(m_PosX, m_PosY, m_PosZ);
+	m_World->BroadcastBlockEntity(GetPos());
 }
 
 
@@ -189,7 +189,7 @@ void cMobSpawnerEntity::SpawnEntity(void)
 					}
 				}
 			}
-			return EntitiesSpawned;
+			return HaveSpawnedEntity;
 		}
 	);
 

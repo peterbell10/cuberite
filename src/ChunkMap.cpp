@@ -19,6 +19,7 @@
 #include "Blocks/ChunkInterface.h"
 #include "Entities/Pickup.h"
 #include "DeadlockDetect.h"
+#include "BlockEntities/BlockEntity.h"
 
 #ifndef _WIN32
 	#include <cstdlib>  // abs
@@ -305,12 +306,12 @@ void cChunkMap::BroadcastUnleashEntity(const cEntity & a_Entity)
 
 
 
-void cChunkMap::BroadcastBlockAction(int a_BlockX, int a_BlockY, int a_BlockZ, char a_Byte1, char a_Byte2, BLOCKTYPE a_BlockType, const cClientHandle * a_Exclude)
+void cChunkMap::BroadcastBlockAction(Vector3i a_BlockPos, char a_Byte1, char a_Byte2, BLOCKTYPE a_BlockType, const cClientHandle * a_Exclude)
 {
 	cCSLock Lock(m_CSChunks);
 	int x, z, ChunkX, ChunkZ;
-	x = a_BlockX;
-	z = a_BlockZ;
+	x = a_BlockPos.x;
+	z = a_BlockPos.z;
 	cChunkDef::BlockToChunk(x, z, ChunkX, ChunkZ);
 	cChunkPtr Chunk = GetChunkNoGen(ChunkX, ChunkZ);
 	if (Chunk == nullptr)
@@ -318,43 +319,40 @@ void cChunkMap::BroadcastBlockAction(int a_BlockX, int a_BlockY, int a_BlockZ, c
 		return;
 	}
 	// It's perfectly legal to broadcast packets even to invalid chunks!
-	Chunk->BroadcastBlockAction(a_BlockX, a_BlockY, a_BlockZ, a_Byte1, a_Byte2, a_BlockType, a_Exclude);
+	Chunk->BroadcastBlockAction(a_BlockPos, a_Byte1, a_Byte2, a_BlockType, a_Exclude);
 }
 
 
 
 
 
-void cChunkMap::BroadcastBlockBreakAnimation(UInt32 a_EntityID, int a_BlockX, int a_BlockY, int a_BlockZ, char a_Stage, const cClientHandle * a_Exclude)
+void cChunkMap::BroadcastBlockBreakAnimation(UInt32 a_EntityID, Vector3i a_BlockPos, char a_Stage, const cClientHandle * a_Exclude)
 {
 	cCSLock Lock(m_CSChunks);
-	int ChunkX, ChunkZ;
-
-	cChunkDef::BlockToChunk(a_BlockX, a_BlockZ, ChunkX, ChunkZ);
-	cChunkPtr Chunk = GetChunkNoGen(ChunkX, ChunkZ);
+	cChunkCoords ChunkPos = cChunkDef::BlockToChunk(a_BlockPos);
+	cChunkPtr Chunk = GetChunkNoGen(ChunkPos);
 	if (Chunk == nullptr)
 	{
 		return;
 	}
 	// It's perfectly legal to broadcast packets even to invalid chunks!
-	Chunk->BroadcastBlockBreakAnimation(a_EntityID, a_BlockX, a_BlockY, a_BlockZ, a_Stage, a_Exclude);
+	Chunk->BroadcastBlockBreakAnimation(a_EntityID, a_BlockPos, a_Stage, a_Exclude);
 }
 
 
 
 
 
-void cChunkMap::BroadcastBlockEntity(int a_BlockX, int a_BlockY, int a_BlockZ, const cClientHandle * a_Exclude)
+void cChunkMap::BroadcastBlockEntity(Vector3i a_BlockPos, const cClientHandle * a_Exclude)
 {
 	cCSLock Lock(m_CSChunks);
-	int ChunkX, ChunkZ;
-	cChunkDef::BlockToChunk(a_BlockX, a_BlockZ, ChunkX, ChunkZ);
-	cChunkPtr Chunk = GetChunkNoGen(ChunkX, ChunkZ);
+	cChunkCoords ChunkPos = cChunkDef::BlockToChunk(a_BlockPos);
+	cChunkPtr Chunk = GetChunkNoGen(ChunkPos);
 	if ((Chunk == nullptr) || !Chunk->IsValid())
 	{
 		return;
 	}
-	Chunk->BroadcastBlockEntity(a_BlockX, a_BlockY, a_BlockZ, a_Exclude);
+	Chunk->BroadcastBlockEntity(a_BlockPos, a_Exclude);
 }
 
 
@@ -605,19 +603,19 @@ void cChunkMap::BroadcastRemoveEntityEffect(const cEntity & a_Entity, int a_Effe
 
 
 
-void cChunkMap::BroadcastSoundEffect(const AString & a_SoundName, double a_X, double a_Y, double a_Z, float a_Volume, float a_Pitch, const cClientHandle * a_Exclude)
+void cChunkMap::BroadcastSoundEffect(const AString & a_SoundName, Vector3d a_Position, float a_Volume, float a_Pitch, const cClientHandle * a_Exclude)
 {
 	cCSLock Lock(m_CSChunks);
 	int ChunkX, ChunkZ;
 
-	cChunkDef::BlockToChunk(FloorC(std::floor(a_X)), FloorC(std::floor(a_Z)), ChunkX, ChunkZ);
+	cChunkDef::BlockToChunk(FloorC(std::floor(a_Position.x)), FloorC(std::floor(a_Position.z)), ChunkX, ChunkZ);
 	cChunkPtr Chunk = GetChunkNoGen(ChunkX, ChunkZ);
 	if (Chunk == nullptr)
 	{
 		return;
 	}
 	// It's perfectly legal to broadcast packets even to invalid chunks!
-	Chunk->BroadcastSoundEffect(a_SoundName, a_X, a_Y, a_Z, a_Volume, a_Pitch, a_Exclude);
+	Chunk->BroadcastSoundEffect(a_SoundName, a_Position, a_Volume, a_Pitch, a_Exclude);
 }
 
 
@@ -659,18 +657,18 @@ void cChunkMap::BroadcastSpawnEntity(cEntity & a_Entity, const cClientHandle * a
 
 
 
-void cChunkMap::BroadcastThunderbolt(int a_BlockX, int a_BlockY, int a_BlockZ, const cClientHandle * a_Exclude)
+void cChunkMap::BroadcastThunderbolt(Vector3i a_BlockPos, const cClientHandle * a_Exclude)
 {
 	cCSLock Lock(m_CSChunks);
 	int ChunkX, ChunkZ;
-	cChunkDef::BlockToChunk(a_BlockX, a_BlockZ, ChunkX, ChunkZ);
+	cChunkDef::BlockToChunk(a_BlockPos.x, a_BlockPos.z, ChunkX, ChunkZ);
 	cChunkPtr Chunk = GetChunkNoGen(ChunkX, ChunkZ);
 	if (Chunk == nullptr)
 	{
 		return;
 	}
 	// It's perfectly legal to broadcast packets even to invalid chunks!
-	Chunk->BroadcastThunderbolt(a_BlockX, a_BlockY, a_BlockZ, a_Exclude);
+	Chunk->BroadcastThunderbolt(a_BlockPos, a_Exclude);
 }
 
 
@@ -1764,6 +1762,18 @@ void cChunkMap::DoExplosionAt(double a_ExplosionSize, double a_BlockX, double a_
 								{
 									m_World->SpawnFallingBlock(bx + x, by + y + 5, bz + z, Block, area.GetBlockMeta(bx + x, by + y, bz + z));
 								}
+							}
+
+							// Destroy any block entities
+							if (cBlockEntity::IsBlockEntityBlockType(Block))
+							{
+								Vector3i BlockPos(bx + x, by + y, bz + z);
+								DoWithBlockEntityAt(BlockPos.x, BlockPos.y, BlockPos.z, [](cBlockEntity & a_BE)
+									{
+										a_BE.Destroy();
+										return true;
+									}
+								);
 							}
 
 							area.SetBlockTypeMeta(bx + x, by + y, bz + z, E_BLOCK_AIR, 0);

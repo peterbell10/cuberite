@@ -612,6 +612,7 @@ char cItemHandler::GetMaxStackSize(void)
 		case E_ITEM_HEAD:                 return 64;
 		case E_ITEM_JUNGLE_DOOR:          return 64;
 		case E_ITEM_IRON:                 return 64;
+		case E_ITEM_IRON_DOOR:            return 64;
 		case E_ITEM_IRON_NUGGET:          return 64;
 		case E_ITEM_ITEM_FRAME:           return 64;
 		case E_ITEM_LEAD:                 return 64;
@@ -659,9 +660,10 @@ char cItemHandler::GetMaxStackSize(void)
 		case E_ITEM_SUGAR_CANE:           return 64;
 		case E_ITEM_TIPPED_ARROW:         return 64;
 		case E_ITEM_WHEAT:                return 64;
+		case E_ITEM_WOODEN_DOOR:          return 64;
+		// By default items don't stack:
+		default:                          return 1;
 	}
-	// By default items don't stack:
-	return 1;
 }
 
 
