@@ -731,7 +731,7 @@ public:
 	void Push(const T * a_Value)
 	{
 		ASSERT(IsValid());
-		tolua_pushusertype(m_LuaState, const_cast<T*>(a_Value), Detail::TypeDescription<T>::desc());
+		tolua_pushusertype(m_LuaState, const_cast<T*>(a_Value), Detail::TypeDescription<const T>::desc());
 	}
 
 	template <typename T>
@@ -818,6 +818,12 @@ public:
 			return false;
 		}
 		return GetStackValues(a_StartStackPos + 1, std::forward<Args>(args)...);
+	}
+
+	template <typename T>
+	bool CheckParam(int a_StartParam, int a_EndParam = -1)
+	{
+		return CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
 	}
 
 	/** Returns true if the specified parameters on the stack are of the specified usertable type; also logs warning if not. Used for static functions */
