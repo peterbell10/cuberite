@@ -383,8 +383,7 @@ void cProtocol_1_11_0::SendSpawnMob(const cMonster & a_Mob)
 	cPacketizer Pkt(*this, GetPacketId(sendSpawnMob));  // Spawn Mob packet
 	Pkt.WriteVarInt32(a_Mob.GetUniqueID());
 	// TODO: Bad way to write a UUID, and it's not a true UUID, but this is functional for now.
-	Pkt.WriteBEUInt64(0);
-	Pkt.WriteBEUInt64(a_Mob.GetUniqueID());
+	Pkt.WriteUUID(cUUID::GenerateVersion3(std::to_string(a_Mob.GetUniqueID())));
 	Pkt.WriteVarInt32(static_cast<UInt32>(a_Mob.GetMobType()));
 	Pkt.WriteBEDouble(a_Mob.GetPosX());
 	Pkt.WriteBEDouble(a_Mob.GetPosY());
