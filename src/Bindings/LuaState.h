@@ -49,30 +49,7 @@ class cLuaTCPLink;
 class cLuaUDPEndpoint;
 class cDeadlockDetect;
 #include "LuaState_Declaration.inc"
-
-
-
-
-
-namespace Detail
-{
-	/** Utility struct that provides a way to get the type string for a type.
-	Must be a struct in order to support partial specialization and must not be inside a class (gcc / clang complain about that).
-	The general declaration must not be used by the code, all types need a specialization returning the correct type. */
-	template <typename T>
-	struct TypeDescription
-	{
-		/* If compiler complains on the following line, you need to make sure that the type
-		passed as the template parameter to this structure has an appropriate TypeDescription specialization.
-		Usually these are created automatically for all API classes by ToLua++ in the LuaStateParams_TypeDescs.inc file.
-		For basic types, the specializations are below.
-		*/
-		static const char * desc() = delete;
-	};
-
-	// Include the TypeDecription<T> specializations generated for all known API classes:
-	#include "LuaState_TypeDescs.inc"
-}
+#include "LuaState_TypeDescs.inc"
 
 
 
