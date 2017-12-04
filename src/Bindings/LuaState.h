@@ -58,7 +58,46 @@ class cDeadlockDetect;
 /** Encapsulates a Lua state and provides some syntactic sugar for common operations */
 class cLuaState
 {
+	/** A dumb smart-pointer style wrapper around a bare pointer. */
+	template <typename T>
+	class cWrappedPtr
+	{
+	public:
+		typedef T ParentType;
+		T * m_Ptr;
+
+		T & operator * () const { return *m_Ptr; }
+
+		T * operator -> () const { return m_Ptr; }
+
+		T * get() const { return m_Ptr; }
+	};
+
 public:
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value must be a non-nil pointer when read from Lua. */
+	template <typename T>
+	class cNonNil:
+		public cWrappedPtr<T>
+	{
+	};
+
+
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "self" - it must be a non-nil pointer when read from Lua,
+	and has a special error message when mismatched. */
+	template <typename T>
+	class cSelf:
+		public cWrappedPtr<T>
+	{
+	};
+
+
+	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "static self",
+	it must be the table representing the class T when read from Lua. */
+	template <class T>
+	class cStaticSelf:
+		public cWrappedPtr<T>
+	{
+	};
 
 	#ifdef _DEBUG
 		/** Asserts that the Lua stack has the same amount of entries when this object is destructed, as when it was constructed.
@@ -800,7 +839,18 @@ public:
 	template <typename T>
 	bool CheckParam(int a_StartParam, int a_EndParam = -1)
 	{
-		return CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
+		return Detail::ParamChecker<T>{}(*this, a_StartParam, a_EndParam);
+	}
+
+	template <typename T, typename... Ts>
+	bool CheckParams(int a_StartParam = 1)
+	{
+		return (CheckParam<T>(a_StartParam) && CheckParams<Ts...>(a_StartParam + 1));
+	}
+
+	bool CheckParams(int a_StartParam)
+	{
+		return CheckParamEnd(a_StartParam);
 	}
 
 	/** Returns true if the specified parameters on the stack are of the specified usertable type; also logs warning if not. Used for static functions */
@@ -1045,6 +1095,42 @@ protected:
 	/** Removes the specified reference from tracking.
 	The reference will no longer be invalidated when this Lua state is about to be closed. */
 	void UntrackRef(cTrackedRef & a_Ref);
+
+	template <typename T>
+	struct sParamChecker
+	{
+		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		{
+			return L.CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
+		}
+	};
+
+	template <typename T>
+	struct sParamChecker<cSelf<T>>
+	{
+		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		{
+			return L.CheckParamSelf(Detail::TypeDescription<T>::desc());
+		}
+	};
+
+	template <typename T>
+	struct sParamChecker<cStaticSelf<T>>
+	{
+		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		{
+			return L.CheckParamStaticSelf(Detail::TypeDescription<T>::desc());
+		}
+	};
+
+	template <>
+	struct sParamChecker<AString>
+	{
+		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		{
+			return L.CheckParamString(a_StartParam, a_EndParam);
+		}
+	};
 } ;
 
 
