@@ -64,7 +64,7 @@ class cLuaState
 	{
 	public:
 		typedef T ParentType;
-		T * m_Ptr;
+		T * m_Ptr = nullptr;
 
 		T & operator * () const { return *m_Ptr; }
 
@@ -737,6 +737,18 @@ public:
 	}
 
 	template <typename T>
+	bool GetStackValue(int a_StackPos, cSelf<T> & a_ReturnedVal)
+	{
+		return GetStackValue(a_StackPos, a_ReturnedVal.m_Ptr) && (a_ReturnedVal.m_Ptr != nullptr);
+	}
+
+	template <typename T>
+	bool GetStackValue(int a_StackPos, cStaticSelf<T> &)
+	{
+		return true;
+	}
+
+	template <typename T>
 	void Push(T * a_Value)
 	{
 		ASSERT(IsValid());
@@ -839,7 +851,7 @@ public:
 	template <typename T>
 	bool CheckParam(int a_StartParam, int a_EndParam = -1)
 	{
-		return Detail::ParamChecker<T>{}(*this, a_StartParam, a_EndParam);
+		return ParamChecker<T>{}(*this, a_StartParam, a_EndParam);
 	}
 
 	template <typename T, typename... Ts>
@@ -848,9 +860,16 @@ public:
 		return (CheckParam<T>(a_StartParam) && CheckParams<Ts...>(a_StartParam + 1));
 	}
 
+	template <typename... Ts, typename std::enable_if<sizeof...(Ts) == 0, int>::type = 0>
 	bool CheckParams(int a_StartParam)
 	{
 		return CheckParamEnd(a_StartParam);
+	}
+
+	template <typename... Ts>
+	bool GetAndCheckParams(Ts & ... a_Args)
+	{
+		return CheckParams<Ts...>() && GetStackValues(1, a_Args...);
 	}
 
 	/** Returns true if the specified parameters on the stack are of the specified usertable type; also logs warning if not. Used for static functions */
@@ -1097,7 +1116,7 @@ protected:
 	void UntrackRef(cTrackedRef & a_Ref);
 
 	template <typename T>
-	struct sParamChecker
+	struct ParamChecker
 	{
 		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
 		{
@@ -1106,7 +1125,7 @@ protected:
 	};
 
 	template <typename T>
-	struct sParamChecker<cSelf<T>>
+	struct ParamChecker<cSelf<T>>
 	{
 		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
 		{
@@ -1115,7 +1134,7 @@ protected:
 	};
 
 	template <typename T>
-	struct sParamChecker<cStaticSelf<T>>
+	struct ParamChecker<cStaticSelf<T>>
 	{
 		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
 		{
@@ -1124,11 +1143,20 @@ protected:
 	};
 
 	template <>
-	struct sParamChecker<AString>
+	struct ParamChecker<AString>
 	{
 		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
 		{
 			return L.CheckParamString(a_StartParam, a_EndParam);
+		}
+	};
+
+	template <>
+	struct ParamChecker<cUUID>
+	{
+		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		{
+			return L.CheckParamUUID(a_StartParam, a_EndParam);
 		}
 	};
 } ;
