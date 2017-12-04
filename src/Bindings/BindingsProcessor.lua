@@ -148,8 +148,7 @@ end
 --- Outputs the helper files supplementing the cLuaState class
 -- Writes:
 --   LuaState_Declaration.inc
---   LuaState_Implementation.cpp
---   LuaState_Typedefs.inc
+--   LuaState_TypeDescs.inc
 local function OutputLuaStateHelpers(a_Package)
 	-- Collect all class types from ToLua:
 	local types = {}
@@ -165,7 +164,7 @@ local function OutputLuaStateHelpers(a_Package)
 		end
 	)
 
-	-- Output the typedefs:
+	-- Output the declaration:
 	do
 		local f = assert(io.open("LuaState_Declaration.inc", "w"))
 		f:write("\n// LuaState_Typedefs.inc\n\n// This file is generated along with the Lua bindings by ToLua. Do not edit manually, do not commit to repo.\n")
@@ -207,18 +206,6 @@ local function OutputLuaStateHelpers(a_Package)
 			f:write("\ttemplate <> struct TypeDescription<const " .. item.type .. "> { static const char * desc() { return \"const " .. item.type .. "\"; } };\n")
 		end
 		f:write("\n}  // namespace Detail\n")
-		f:close()
-	end
-
-	do
-		local f = assert(io.open("LuaStateParams_TypeDescs.inc", "w"))
-		f:write("\n// LuaStateParams_TypeDescs.inc\n\n// This file is generated along with the Lua bindings by ToLua. Do not edit manually, do not commit to repo.\n")
-		f:write("// Implements a TypeDescription<type>::desc() specialization for each class exported to the Lua API.\n")
-		f:write("// This file expects to be included from inside the cLuaStateParams class definition\n")
-		f:write("\n\n\n\n\n")
-		for _, item in ipairs(types) do
-			f:write("template <> struct TypeDescription<" .. item.lname .. "> { static const char * desc() { return \"" .. item.lname .. "\"; } };\n")
-		end
 		f:close()
 	end
 end
