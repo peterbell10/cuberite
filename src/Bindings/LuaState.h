@@ -41,7 +41,6 @@ extern "C"
 #include "../Defines.h"
 #include "../FunctionRef.h"
 #include "PluginManager.h"
-#include "tolua++/include/tolua++.h"
 
 // fwd:
 class cLuaServerHandle;
@@ -67,13 +66,14 @@ namespace Detail
 	template <typename T> struct Type {};
 
 	// Types with custom names in lua
-
 	template <> struct TypeDescription<      cLuaServerHandle>   { static const char * desc() { return       "cServerHandle";      } };
 	template <> struct TypeDescription<const cLuaServerHandle>   { static const char * desc() { return "const cServerHandle";      } };
 	template <> struct TypeDescription<      cLuaTCPLink>        { static const char * desc() { return       "cTCPLink";           } };
 	template <> struct TypeDescription<const cLuaTCPLink>        { static const char * desc() { return "const cTCPLink";           } };
 	template <> struct TypeDescription<      cLuaUDPEndpoint>    { static const char * desc() { return       "cUDPEndpoint";       } };
 	template <> struct TypeDescription<const cLuaUDPEndpoint>    { static const char * desc() { return "const cUDPEndpoint";       } };
+
+	// Types entirely manually exported
 	template <> struct TypeDescription<      cCryptoHash>        { static const char * desc() { return       "cCryptoHash";        } };
 	template <> struct TypeDescription<const cCryptoHash>        { static const char * desc() { return "const cCryptoHash";        } };
 	template <> struct TypeDescription<      cLineBlockTracer>   { static const char * desc() { return       "cLineBlockTracer";   } };
@@ -96,18 +96,14 @@ class cLuaState
 	class cWrappedPtr
 	{
 	public:
-		typedef T ParentType;
 		T * m_Ptr = nullptr;
-
 		T & operator * () const { return *m_Ptr; }
-
 		T * operator -> () const { return m_Ptr; }
-
 		T * get() const { return m_Ptr; }
 	};
 
 public:
-	/** A wrapper used in cLuaStateParams::Call() to signalize that the value must be a non-nil pointer when read from Lua. */
+	/** A wrapper used to signalize that the value must be a non-nil pointer when read from Lua. */
 	template <typename T>
 	class cNonNil:
 		public cWrappedPtr<T>
@@ -115,7 +111,7 @@ public:
 	};
 
 
-	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "self" - it must be a non-nil pointer when read from Lua,
+	/** A wrapper used to signalize that the value is a "self" - it must be a non-nil pointer when read from Lua,
 	and has a special error message when mismatched. */
 	template <typename T>
 	class cSelf:
@@ -124,7 +120,7 @@ public:
 	};
 
 
-	/** A wrapper used in cLuaStateParams::Call() to signalize that the value is a "static self",
+	/** A wrapper used to signalize that the value is a "static self",
 	it must be the table representing the class T when read from Lua. */
 	template <class T>
 	class cStaticSelf:
@@ -699,6 +695,7 @@ public:
 	void Push(const Vector3i & a_Vector);
 
 	// Push a simple value onto the stack (keep alpha-sorted):
+	void Push(bool a_Value);
 	void Push(cEntity * a_Entity);
 	void Push(lua_Number a_Value);
 	void Push(std::chrono::milliseconds a_time)
@@ -706,8 +703,10 @@ public:
 		Push(static_cast<lua_Number>(a_time.count()));
 	}
 
-	/** Push for other numeric types. */
-	template <class T, Detail::enable_if_t<std::is_arithmetic<T>::value, int> = 0>
+	// Push for enumerations and other numeric types.
+	template <class T, Detail::enable_if_t<
+		std::is_enum<T>::value ||
+		std::is_arithmetic<T>::value, int> = 0>
 	void Push(T a_Value)
 	{
 		Push(static_cast<lua_Number>(a_Value));
@@ -796,15 +795,13 @@ public:
 	template <typename T>
 	void Push(T * a_Value)
 	{
-		ASSERT(IsValid());
-		tolua_pushusertype(m_LuaState, a_Value, Detail::TypeDescription<T>::desc());
+		PushUserType(a_Value, Detail::TypeDescription<T>::desc());
 	}
 
 	template <typename T>
 	void Push(const T * a_Value)
 	{
-		ASSERT(IsValid());
-		tolua_pushusertype(m_LuaState, const_cast<T*>(a_Value), Detail::TypeDescription<const T>::desc());
+		PushUserType(const_cast<T*>(a_Value), Detail::TypeDescription<const T>::desc());
 	}
 
 	template <typename T>
@@ -816,8 +813,7 @@ public:
 			a_ReturnedVal = nullptr;
 			return false;
 		}
-		tolua_Error err;
-		if (tolua_isusertype(m_LuaState, a_StackPos, Detail::TypeDescription<T>::desc(), false, &err))
+		if (IsParamUserType(a_StackPos, Detail::TypeDescription<T>::desc()))
 		{
 			a_ReturnedVal = *(static_cast<T **>(lua_touserdata(m_LuaState, a_StackPos)));
 			return true;
@@ -959,6 +955,8 @@ public:
 	bool IsParamUserType(int a_Param, AString a_UserType);
 
 	bool IsParamNumber(int a_Param);
+
+	bool IsParamNil(int a_Param);
 
 	/** If the status is nonzero, prints the text on the top of Lua stack and returns true */
 	bool ReportErrors(int status);
@@ -1134,7 +1132,7 @@ protected:
 	bool PushFunction(const cRef & a_TableRef, const char * a_FnName);
 
 	/** Pushes a usertype of the specified class type onto the stack */
-	// void PushUserType(void * a_Object, const char * a_Type);
+	void PushUserType(void * a_Object, const char * a_Type);
 
 	/**
 	Calls the function that has been pushed onto the stack by PushFunction(),
@@ -1160,8 +1158,8 @@ protected:
 	The reference will no longer be invalidated when this Lua state is about to be closed. */
 	void UntrackRef(cTrackedRef & a_Ref);
 
-	template <typename T, Detail::enable_if_t<!std::is_arithmetic<T>::value, int> = 0>
-	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<T>)
+	template <typename T>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<T*>)
 	{
 		return CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
 	}
@@ -1235,7 +1233,7 @@ protected:
 	template <typename T>
 	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cNonNil<T>>)
 	{
-		if (!CheckParam<T>(a_StartParam, a_EndParam))
+		if (!CheckParam<T *>(a_StartParam, a_EndParam))
 		{
 			return false;
 		}
@@ -1247,14 +1245,10 @@ protected:
 
 		for (int i = a_StartParam; i != a_EndParam; ++i)
 		{
-			if (lua_isnoneornil(L, i))
+			if (lua_isnoneornil(m_LuaState, i))
 			{
 				// Not the correct parameter
-				lua_Debug entry;
-				VERIFY(lua_getstack(m_LuaState, 0,   &entry));
-				VERIFY(lua_getinfo (m_LuaState, "n", &entry));
-				AString ErrMsg = Printf("#ferror in function '%s'.", (entry.name != nullptr) ? entry.name : "?");
-				tolua_error(m_LuaState, ErrMsg.c_str(), &tolua_err);
+				ApiParamError("Expected non-nil value for parameter %d", i);
 				return false;
 			}
 		}

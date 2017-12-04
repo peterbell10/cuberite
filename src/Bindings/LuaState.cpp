@@ -816,6 +816,17 @@ bool cLuaState::PushFunction(const cRef & a_TableRef, const char * a_FnName)
 
 
 
+void cLuaState::PushUserType(void * a_Value, const char * a_Type)
+{
+	ASSERT(IsValid());
+
+	tolua_pushusertype(m_LuaState, a_Value, a_Type);
+}
+
+
+
+
+
 void cLuaState::Push(const AString & a_String)
 {
 	ASSERT(IsValid());
@@ -1870,6 +1881,17 @@ bool cLuaState::IsParamNumber(int a_Param)
 
 	tolua_Error tolua_err;
 	return (tolua_isnumber(m_LuaState, a_Param, 0, &tolua_err) == 1);
+}
+
+
+
+
+
+bool cLuaState::IsParamNil(int a_Param)
+{
+	ASSERT(IsValid());
+
+	return lua_isnil(m_LuaState, a_Param);
 }
 
 
