@@ -468,16 +468,13 @@ static int tolua_LOGERROR(lua_State * tolua_S)
 static int tolua_Base64Encode(lua_State * tolua_S)
 {
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamString(1) ||
-		!L.CheckParamEnd(2)
-	)
+	AString Src;
+
+	if (!L.GetAndCheckParams(Src))
 	{
 		return 0;
 	}
 
-	AString Src;
-	L.GetStackValue(1, Src);
 	AString res = Base64Encode(Src);
 	L.Push(res);
 	return 1;
@@ -490,16 +487,13 @@ static int tolua_Base64Encode(lua_State * tolua_S)
 static int tolua_Base64Decode(lua_State * tolua_S)
 {
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamString(1) ||
-		!L.CheckParamEnd(2)
-	)
+	AString Src;
+
+	if (!L.GetAndCheckParams(Src))
 	{
 		return 0;
 	}
 
-	AString Src;
-	L.GetStackValue(1, Src);
 	AString res = Base64Decode(Src);
 	L.Push(res);
 	return 1;
@@ -536,18 +530,14 @@ static int tolua_cFile_ChangeFileExt(lua_State * tolua_S)
 
 	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2, 3) ||
-		!L.CheckParamEnd(4)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString FileName, NewExt;
+
+	if (!L.GetAndCheckParams(Self, FileName, NewExt))
 	{
 		return 0;
 	}
 
-	// Execute:
-	AString FileName, NewExt;
-	VERIFY(L.GetStackValues(2, FileName, NewExt));
 	L.Push(cFile::ChangeFileExt(FileName, NewExt));
 	return 1;
 }
@@ -563,18 +553,13 @@ static int tolua_cFile_Copy(lua_State * tolua_S)
 
 	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2, 3) ||
-		!L.CheckParamEnd(4)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString SrcFile, DstFile;
+
+	if (!L.GetAndCheckParams(Self, SrcFile, DstFile))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString SrcFile, DstFile;
-	VERIFY(L.GetStackValues(2, SrcFile, DstFile));
 	L.Push(cFile::Copy(SrcFile, DstFile));
 	return 1;
 }
@@ -588,20 +573,14 @@ static int tolua_cFile_CreateFolder(lua_State * tolua_S)
 	// API signature:
 	// cFile:CreateFolder(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString FolderPath;
+
+	if (!L.GetAndCheckParams(Self, FolderPath))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString FolderPath;
-	VERIFY(L.GetStackValues(2, FolderPath));
 	L.Push(cFile::CreateFolder(FolderPath));
 	return 1;
 }
@@ -615,20 +594,14 @@ static int tolua_cFile_CreateFolderRecursive(lua_State * tolua_S)
 	// API signature:
 	// cFile:CreateFolderRecursive(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString FolderPath;
+
+	if (!L.GetAndCheckParams(Self, FolderPath))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString FolderPath;
-	VERIFY(L.GetStackValues(2, FolderPath));
 	L.Push(cFile::CreateFolderRecursive(FolderPath));
 	return 1;
 }
@@ -642,20 +615,14 @@ static int tolua_cFile_Delete(lua_State * tolua_S)
 	// API signature:
 	// cFile:Delete(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Path;
+
+	if (!L.GetAndCheckParams(Self, Path))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString Path;
-	VERIFY(L.GetStackValues(2, Path));
 	L.Push(cFile::Delete(Path));
 	return 1;
 }
@@ -669,20 +636,14 @@ static int tolua_cFile_DeleteFile(lua_State * tolua_S)
 	// API signature:
 	// cFile:DeleteFile(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Path;
+
+	if (!L.GetAndCheckParams(Self, Path))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString Path;
-	VERIFY(L.GetStackValues(2, Path));
 	L.Push(cFile::DeleteFile(Path));
 	return 1;
 }
@@ -696,20 +657,14 @@ static int tolua_cFile_DeleteFolder(lua_State * tolua_S)
 	// API signature:
 	// cFile:DeleteFolder(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Path;
+
+	if (!L.GetAndCheckParams(Self, Path))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString Path;
-	VERIFY(L.GetStackValues(2, Path));
 	L.Push(cFile::DeleteFolder(Path));
 	return 1;
 }
@@ -723,20 +678,14 @@ static int tolua_cFile_DeleteFolderContents(lua_State * tolua_S)
 	// API signature:
 	// cFile:DeleteFolderContents(string) -> bool
 
-	// Check params:
 	cLuaState L(tolua_S);
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Path;
+
+	if (!L.GetAndCheckParams(Self, Path))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString Path;
-	VERIFY(L.GetStackValues(2, Path));
 	L.Push(cFile::DeleteFolderContents(Path));
 	return 1;
 }
@@ -756,18 +705,13 @@ static int tolua_cFile_Exists(lua_State * tolua_S)
 	L.LogStackTrace();
 
 	// Check params:
-	if (
-		!L.CheckParamUserTable(1, "cFile") ||
-		!L.CheckParamString(2) ||
-		!L.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Path;
+
+	if (!L.GetAndCheckParams(Self, Path))
 	{
 		return 0;
 	}
-
-	// Execute:
-	AString Path;
-	VERIFY(L.GetStackValues(2, Path));
 	L.Push(cFile::Exists(Path));
 	return 1;
 }
@@ -781,23 +725,17 @@ static int tolua_cFile_GetFolderContents(lua_State * tolua_S)
 	// API signature:
 	// cFile:GetFolderContents(string) -> {string, string, ...}
 
-	// Check params:
-	cLuaState LuaState(tolua_S);
-	if (
-		!LuaState.CheckParamUserTable(1, "cFile") ||
-		!LuaState.CheckParamString   (2) ||
-		!LuaState.CheckParamEnd      (3)
-	)
+	cLuaState L(tolua_S);
+	cLuaState::cStaticSelf<cFile> Self;
+	AString Folder;
+
+	if (!L.GetAndCheckParams(Self, Folder))
 	{
 		return 0;
 	}
 
-	// Get params:
-	AString Folder;
-	VERIFY(LuaState.GetStackValues(2, Folder));
-
 	// Execute and push result:
-	LuaState.Push(cFile::GetFolderContents(Folder));
+	L.Push(cFile::GetFolderContents(Folder));
 	return 1;
 }
 
@@ -2667,22 +2605,14 @@ static int tolua_cMojangAPI_MakeUUIDDashed(lua_State * L)
 {
 	// Function now non-existant but kept for API compatibility
 
-	// Check params:
 	cLuaState S(L);
-	if (
-		!S.CheckParamStaticSelf("cMojangAPI") ||
-		!S.CheckParamUUID(2) ||
-		!S.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cMojangAPI> Self;
+	cUUID UUID;
+
+	if (!S.GetAndCheckParams(Self, UUID))
 	{
 		return 0;
 	}
-
-	// Get the params:
-	cUUID UUID;
-	S.GetStackValue(2, UUID);
-
-	// Push the result:
 	S.Push(UUID.ToLongString());
 	return 1;
 }
@@ -2697,20 +2627,13 @@ static int tolua_cMojangAPI_MakeUUIDShort(lua_State * L)
 
 	// Check params:
 	cLuaState S(L);
-	if (
-		!S.CheckParamUserTable(1, "cMojangAPI") ||
-		!S.CheckParamUUID(2) ||
-		!S.CheckParamEnd(3)
-	)
+	cLuaState::cStaticSelf<cMojangAPI> Self;
+	cUUID UUID;
+
+	if (!S.GetAndCheckParams(Self, UUID))
 	{
 		return 0;
 	}
-
-	// Get the params:
-	cUUID UUID;
-	S.GetStackValue(2, UUID);
-
-	// Push the result:
 	S.Push(UUID.ToShortString());
 	return 1;
 }
@@ -2721,18 +2644,13 @@ static int tolua_cMojangAPI_MakeUUIDShort(lua_State * L)
 
 static int tolua_get_cItem_m_LoreTable(lua_State * tolua_S)
 {
-	// Check params:
 	cLuaState L(tolua_S);
-	if (!L.CheckParamSelf("const cItem"))
+	cLuaState::cSelf<const cItem> Self;
+
+	if (!L.GetAndCheckParams(Self))
 	{
 		return 0;
 	}
-
-	// Get the params:
-	const cItem * Self = nullptr;
-	L.GetStackValue(1, Self);
-
-	// Push the result:
 	L.Push(Self->m_LoreTable);
 	return 1;
 }
