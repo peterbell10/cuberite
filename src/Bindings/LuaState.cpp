@@ -1005,88 +1005,11 @@ void cLuaState::Push(cEntity * a_Entity)
 
 
 
-void cLuaState::Push(cLuaServerHandle * a_ServerHandle)
-{
-	ASSERT(IsValid());
-
-	tolua_pushusertype(m_LuaState, a_ServerHandle, "cServerHandle");
-}
-
-
-
-
-
-void cLuaState::Push(cLuaTCPLink * a_TCPLink)
-{
-	ASSERT(IsValid());
-
-	tolua_pushusertype(m_LuaState, a_TCPLink, "cTCPLink");
-}
-
-
-
-
-
-void cLuaState::Push(cLuaUDPEndpoint * a_UDPEndpoint)
-{
-	ASSERT(IsValid());
-
-	tolua_pushusertype(m_LuaState, a_UDPEndpoint, "cUDPEndpoint");
-}
-
-
-
-
-
-void cLuaState::Push(double a_Value)
+void cLuaState::Push(lua_Number a_Value)
 {
 	ASSERT(IsValid());
 
 	tolua_pushnumber(m_LuaState, a_Value);
-}
-
-
-
-
-
-void cLuaState::Push(int a_Value)
-{
-	ASSERT(IsValid());
-
-	tolua_pushnumber(m_LuaState, a_Value);
-}
-
-
-
-
-
-void cLuaState::Push(long a_Value)
-{
-	ASSERT(IsValid());
-
-	tolua_pushnumber(m_LuaState, static_cast<lua_Number>(a_Value));
-}
-
-
-
-
-
-void cLuaState::Push(UInt32 a_Value)
-{
-	ASSERT(IsValid());
-
-	tolua_pushnumber(m_LuaState, a_Value);
-}
-
-
-
-
-
-void cLuaState::Push(std::chrono::milliseconds a_Value)
-{
-	ASSERT(IsValid());
-
-	tolua_pushnumber(m_LuaState, static_cast<lua_Number>(a_Value.count()));
 }
 
 

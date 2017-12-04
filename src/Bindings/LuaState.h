@@ -48,8 +48,41 @@ class cLuaServerHandle;
 class cLuaTCPLink;
 class cLuaUDPEndpoint;
 class cDeadlockDetect;
+class cUrlParser;
+class cCryptoHash;
+class cLineBlockTracer;
+class cStringCompression;
 #include "LuaState_Declaration.inc"
 #include "LuaState_TypeDescs.inc"
+
+
+
+
+
+namespace Detail
+{
+	template <bool Cond, typename T>
+	using enable_if_t = typename std::enable_if<Cond, T>::type;
+
+	template <typename T> struct Type {};
+
+	// Types with custom names in lua
+
+	template <> struct TypeDescription<      cLuaServerHandle>   { static const char * desc() { return       "cServerHandle";      } };
+	template <> struct TypeDescription<const cLuaServerHandle>   { static const char * desc() { return "const cServerHandle";      } };
+	template <> struct TypeDescription<      cLuaTCPLink>        { static const char * desc() { return       "cTCPLink";           } };
+	template <> struct TypeDescription<const cLuaTCPLink>        { static const char * desc() { return "const cTCPLink";           } };
+	template <> struct TypeDescription<      cLuaUDPEndpoint>    { static const char * desc() { return       "cUDPEndpoint";       } };
+	template <> struct TypeDescription<const cLuaUDPEndpoint>    { static const char * desc() { return "const cUDPEndpoint";       } };
+	template <> struct TypeDescription<      cCryptoHash>        { static const char * desc() { return       "cCryptoHash";        } };
+	template <> struct TypeDescription<const cCryptoHash>        { static const char * desc() { return "const cCryptoHash";        } };
+	template <> struct TypeDescription<      cLineBlockTracer>   { static const char * desc() { return       "cLineBlockTracer";   } };
+	template <> struct TypeDescription<const cLineBlockTracer>   { static const char * desc() { return "const cLineBlockTracer";   } };
+	template <> struct TypeDescription<      cStringCompression> { static const char * desc() { return       "cStringCompression"; } };
+	template <> struct TypeDescription<const cStringCompression> { static const char * desc() { return "const cStringCompression"; } };
+	template <> struct TypeDescription<      cUrlParser>         { static const char * desc() { return       "cUrlParser";         } };
+	template <> struct TypeDescription<const cUrlParser>         { static const char * desc() { return "const cUrlParser";         } };
+}
 
 
 
@@ -468,15 +501,18 @@ public:
 	class cOptionalParam
 	{
 	public:
-		explicit cOptionalParam(T & a_Dest):
-			m_Dest(a_Dest)
+		T m_Dest;
+
+		template <typename... Args>
+		cOptionalParam(Args && ... a_Args):
+			m_Dest(std::forward<Args>(a_Args)...)
 		{
 		}
 
-		T & GetDest(void) { return m_Dest; }
-
-	protected:
-		T & m_Dest;
+		operator T & ()
+		{
+			return m_Dest;
+		}
 	};
 
 
@@ -663,16 +699,19 @@ public:
 	void Push(const Vector3i & a_Vector);
 
 	// Push a simple value onto the stack (keep alpha-sorted):
-	void Push(bool a_Value);
 	void Push(cEntity * a_Entity);
-	void Push(cLuaServerHandle * a_ServerHandle);
-	void Push(cLuaTCPLink * a_TCPLink);
-	void Push(cLuaUDPEndpoint * a_UDPEndpoint);
-	void Push(double a_Value);
-	void Push(int a_Value);
-	void Push(long a_Value);
-	void Push(const UInt32 a_Value);
-	void Push(std::chrono::milliseconds a_time);
+	void Push(lua_Number a_Value);
+	void Push(std::chrono::milliseconds a_time)
+	{
+		Push(static_cast<lua_Number>(a_time.count()));
+	}
+
+	/** Push for other numeric types. */
+	template <class T, Detail::enable_if_t<std::is_arithmetic<T>::value, int> = 0>
+	void Push(T a_Value)
+	{
+		Push(static_cast<lua_Number>(a_Value));
+	}
 
 	/** Pops the specified number of values off the top of the Lua stack. */
 	void Pop(int a_NumValuesToPop = 1);
@@ -727,13 +766,13 @@ public:
 
 	/** Retrieves an optional value on the stack - doesn't fail if the stack contains nil instead of the value. */
 	template <typename T>
-	bool GetStackValue(int a_StackPos, cOptionalParam<T> && a_ReturnedVal)
+	bool GetStackValue(int a_StackPos, cOptionalParam<T> & a_ReturnedVal)
 	{
 		if (lua_isnoneornil(m_LuaState, a_StackPos))
 		{
 			return true;
 		}
-		return GetStackValue(a_StackPos, a_ReturnedVal.GetDest());
+		return GetStackValue(a_StackPos, a_ReturnedVal.m_Dest);
 	}
 
 	template <typename T>
@@ -746,6 +785,12 @@ public:
 	bool GetStackValue(int a_StackPos, cStaticSelf<T> &)
 	{
 		return true;
+	}
+
+	template <typename T>
+	bool GetStackValue(int a_StackPos, cNonNil<T> & a_ReturnedVal)
+	{
+		return GetStackValue(a_StackPos, a_ReturnedVal.m_Ptr) && (a_ReturnedVal.m_Ptr != nullptr);
 	}
 
 	template <typename T>
@@ -851,7 +896,7 @@ public:
 	template <typename T>
 	bool CheckParam(int a_StartParam, int a_EndParam = -1)
 	{
-		return ParamChecker<T>{}(*this, a_StartParam, a_EndParam);
+		return CheckParamImpl(a_StartParam, a_EndParam, Detail::Type<T>{});
 	}
 
 	template <typename T, typename... Ts>
@@ -860,7 +905,7 @@ public:
 		return (CheckParam<T>(a_StartParam) && CheckParams<Ts...>(a_StartParam + 1));
 	}
 
-	template <typename... Ts, typename std::enable_if<sizeof...(Ts) == 0, int>::type = 0>
+	template <typename... Ts, Detail::enable_if_t<sizeof...(Ts) == 0, int> = 0>
 	bool CheckParams(int a_StartParam)
 	{
 		return CheckParamEnd(a_StartParam);
@@ -1115,50 +1160,107 @@ protected:
 	The reference will no longer be invalidated when this Lua state is about to be closed. */
 	void UntrackRef(cTrackedRef & a_Ref);
 
-	template <typename T>
-	struct ParamChecker
+	template <typename T, Detail::enable_if_t<!std::is_arithmetic<T>::value, int> = 0>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<T>)
 	{
-		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
-		{
-			return L.CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
-		}
-	};
+		return CheckParamUserType(a_StartParam, Detail::TypeDescription<T>::desc(), a_EndParam);
+	}
+
+	template <typename T, Detail::enable_if_t<std::is_arithmetic<T>::value, int> = 0>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<T>)
+	{
+		return CheckParamNumber(a_StartParam, a_EndParam);
+	}
+
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<bool>)
+	{
+		return CheckParamBool(a_StartParam, a_EndParam);
+	}
 
 	template <typename T>
-	struct ParamChecker<cSelf<T>>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cOptionalParam<T>>)
 	{
-		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		if (a_EndParam == -1)
 		{
-			return L.CheckParamSelf(Detail::TypeDescription<T>::desc());
+			a_EndParam = a_StartParam;
 		}
-	};
+
+		for (int i = a_StartParam; i != a_EndParam; ++i)
+		{
+			if (!lua_isnoneornil(m_LuaState, i) && !CheckParam<T>(i))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
 
 	template <typename T>
-	struct ParamChecker<cStaticSelf<T>>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cSelf<T>>)
 	{
-		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
-		{
-			return L.CheckParamStaticSelf(Detail::TypeDescription<T>::desc());
-		}
-	};
+		return CheckParamSelf(Detail::TypeDescription<T>::desc());
+	}
 
-	template <>
-	struct ParamChecker<AString>
+	template <typename T>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cStaticSelf<T>>)
 	{
-		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
-		{
-			return L.CheckParamString(a_StartParam, a_EndParam);
-		}
-	};
+		return CheckParamStaticSelf(Detail::TypeDescription<T>::desc());
+	}
 
-	template <>
-	struct ParamChecker<cUUID>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<AString>)
 	{
-		bool operator () (cLuaState & L, int a_StartParam, int a_EndParam)
+		return CheckParamString(a_StartParam, a_EndParam);
+	}
+
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cUUID>)
+	{
+		return CheckParamUUID(a_StartParam, a_EndParam);
+	}
+
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cCallback>)
+	{
+		return CheckParamFunction(a_StartParam, a_EndParam);
+	}
+
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cCallbackPtr>)
+	{
+		return CheckParamFunction(a_StartParam, a_EndParam);
+	}
+
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cCallbackSharedPtr>)
+	{
+		return CheckParamFunction(a_StartParam, a_EndParam);
+	}
+
+	template <typename T>
+	bool CheckParamImpl(int a_StartParam, int a_EndParam, Detail::Type<cNonNil<T>>)
+	{
+		if (!CheckParam<T>(a_StartParam, a_EndParam))
 		{
-			return L.CheckParamUUID(a_StartParam, a_EndParam);
+			return false;
 		}
-	};
+
+		if (a_EndParam == -1)
+		{
+			a_EndParam = a_StartParam;
+		}
+
+		for (int i = a_StartParam; i != a_EndParam; ++i)
+		{
+			if (lua_isnoneornil(L, i))
+			{
+				// Not the correct parameter
+				lua_Debug entry;
+				VERIFY(lua_getstack(m_LuaState, 0,   &entry));
+				VERIFY(lua_getinfo (m_LuaState, "n", &entry));
+				AString ErrMsg = Printf("#ferror in function '%s'.", (entry.name != nullptr) ? entry.name : "?");
+				tolua_error(m_LuaState, ErrMsg.c_str(), &tolua_err);
+				return false;
+			}
+		}
+
+		return true;
+	}
 } ;
 
 
