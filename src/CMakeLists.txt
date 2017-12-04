@@ -134,7 +134,6 @@ SET (HDRS
 	MobSpawner.h
 	MonsterConfig.h
 	NetherPortalScanner.h
-	Optional.h
 	OverridesSettingsRepository.h
 	ProbabDistrib.h
 	RankManager.h
