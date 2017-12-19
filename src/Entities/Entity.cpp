@@ -1023,7 +1023,7 @@ void cEntity::HandlePhysics(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 	}
 
 	// Get water direction
-	Direction WaterDir = m_World->GetWaterSimulator()->GetFlowingDirection(BlockX, BlockY, BlockZ);
+	Direction WaterDir = m_World->GetWaterSimulator()->GetFlowingDirection({ BlockX, BlockY, BlockZ });
 
 	m_WaterSpeed *= 0.9;  // Reduce speed each tick
 

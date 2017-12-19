@@ -129,13 +129,13 @@ bool cFluidSimulator::IsHigherMeta(NIBBLETYPE a_Meta1, NIBBLETYPE a_Meta2)
 
 
 // TODO Not working very well yet :s
-Direction cFluidSimulator::GetFlowingDirection(int a_X, int a_Y, int a_Z, bool a_Over)
+Direction cFluidSimulator::GetFlowingDirection(Vector3i a_BlockPos, bool a_Over)
 {
-	if (!cChunkDef::IsValidHeight(a_Y))
+	if (!cChunkDef::IsValidHeight(a_BlockPos.y))
 	{
 		return NONE;
 	}
-	BLOCKTYPE BlockID = m_World.GetBlock(a_X, a_Y, a_Z);
+	BLOCKTYPE BlockID = m_World.GetBlock(a_BlockPos);
 	if (!IsAllowedBlock(BlockID))  // No Fluid -> No Flowing direction :D
 	{
 		return NONE;
@@ -143,78 +143,72 @@ Direction cFluidSimulator::GetFlowingDirection(int a_X, int a_Y, int a_Z, bool a
 
 	/*
 	Disabled because of causing problems and being useless atm
-	char BlockBelow = m_World.GetBlock(a_X, a_Y - 1, a_Z);  // If there is nothing or fluid below it -> dominating flow is down :D
+	char BlockBelow = m_World.GetBlock(a_BlockPos + Vector3i{ 0, -1, 0 });  // If there is nothing or fluid below it -> dominating flow is down :D
 	if ((BlockBelow == E_BLOCK_AIR) || IsAllowedBlock(BlockBelow))
 	{
 		return Y_MINUS;
 	}
 	*/
 
-	NIBBLETYPE LowestPoint = m_World.GetBlockMeta(a_X, a_Y, a_Z);  // Current Block Meta so only lower points will be counted
-	int X = 0, Z = 0;  // Lowest Pos will be stored here
+	NIBBLETYPE LowestMeta = m_World.GetBlockMeta(a_BlockPos);  // Current Block Meta so only lower points will be counted
+	Vector3i LowestPos;  // Lowest Pos will be stored here
 
-	if (IsAllowedBlock(m_World.GetBlock(a_X, a_Y + 1, a_Z)) && a_Over)  // check for upper block to flow because this also affects the flowing direction
+	if (IsAllowedBlock(m_World.GetBlock(a_BlockPos + Vector3i{ 0, 1, 0 })) && a_Over)  // check for upper block to flow because this also affects the flowing direction
 	{
-		return GetFlowingDirection(a_X, a_Y + 1, a_Z, false);
+		return GetFlowingDirection(a_BlockPos + Vector3i{ 0, 1, 0 }, false);
 	}
 
-	std::vector< Vector3i * > Points;
-
-	Points.reserve(4);  // Already allocate 4 places :D
-
-	// add blocks around the checking pos
-	Points.push_back(new Vector3i(a_X - 1, a_Y, a_Z));
-	Points.push_back(new Vector3i(a_X + 1, a_Y, a_Z));
-	Points.push_back(new Vector3i(a_X, a_Y, a_Z + 1));
-	Points.push_back(new Vector3i(a_X, a_Y, a_Z - 1));
-
-	for (auto itr = Points.cbegin(), end = Points.cend(); itr != end; ++itr)
+	const std::array<Vector3i, 4> Points
 	{
-		Vector3i * Pos = (*itr);
-		auto PosBlockID = m_World.GetBlock(Pos->x, Pos->y, Pos->z);
+		{
+			a_BlockPos + Vector3i{ -1,  0,  0 },
+			a_BlockPos + Vector3i{ +1,  0,  0 },
+			a_BlockPos + Vector3i{  0,  0, +1 },
+			a_BlockPos + Vector3i{  0,  0, -1 }
+		}
+	};
+
+	for (const auto Pos : Points)
+	{
+		auto PosBlockID = m_World.GetBlock(Pos);
 		if (IsAllowedBlock(PosBlockID))
 		{
-			NIBBLETYPE Meta = m_World.GetBlockMeta(Pos->x, Pos->y, Pos->z);
+			NIBBLETYPE Meta = m_World.GetBlockMeta(Pos);
 
-			if (Meta > LowestPoint)
+			if (Meta > LowestMeta)
 			{
-				LowestPoint = Meta;
-				X = Pos->x;
-				Z = Pos->z;
+				LowestMeta = Meta;
+				LowestPos = Pos;
 			}
 		}
 		else if (PosBlockID == E_BLOCK_AIR)
 		{
-			LowestPoint = 9;  // This always dominates
-			X = Pos->x;
-			Z = Pos->z;
-
+			LowestMeta = 9;  // This always dominates
+			LowestPos = Pos;
 		}
-		delete Pos;
-		Pos = nullptr;
 	}
 
-	if (LowestPoint == m_World.GetBlockMeta(a_X, a_Y, a_Z))
+	if (LowestMeta == m_World.GetBlockMeta(a_BlockPos))
 	{
 		return NONE;
 	}
 
-	if (a_X - X > 0)
+	if (a_BlockPos.x > LowestPos.x)
 	{
 		return X_MINUS;
 	}
 
-	if (a_X - X < 0)
+	if (a_BlockPos.x < LowestPos.x)
 	{
 		return X_PLUS;
 	}
 
-	if (a_Z - Z > 0)
+	if (a_BlockPos.z > LowestPos.z)
 	{
 		return Z_MINUS;
 	}
 
-	if (a_Z - Z < 0)
+	if (a_BlockPos.z < LowestPos.z)
 	{
 		return Z_PLUS;
 	}
