@@ -5,48 +5,51 @@
 
 
 
-// tolua_begin
+/** Represents two sets of coords, minimum and maximum for each direction.
+All the coords within those limits (inclusive the edges) are considered "inside" the box. */
+template <typename T>
 class cCuboid
 {
 public:
-	// p1 is expected to have the smaller of the coords; Sort() swaps coords to match this
-	Vector3i p1, p2;
 
-	cCuboid(void) {}
-	cCuboid(const Vector3i & a_p1, const Vector3i & a_p2) : p1(a_p1), p2(a_p2) {}
-	cCuboid(int a_X1, int a_Y1, int a_Z1) : p1(a_X1, a_Y1, a_Z1), p2(a_X1, a_Y1, a_Z1) {}
-
-	#ifdef TOLUA_EXPOSITION  // tolua isn't aware of implicitly generated copy constructors
-		cCuboid(const cCuboid & a_Cuboid);
-	#endif
-
-	// DEPRECATED, use cCuboid(Vector3i, Vector3i) instead
-	cCuboid(int a_X1, int a_Y1, int a_Z1, int a_X2, int a_Y2, int a_Z2) : p1(a_X1, a_Y1, a_Z1), p2(a_X2, a_Y2, a_Z2)
+	cCuboid() = default;
+	cCuboid(Vector3<T> a_Min, Vector3<T> a_Max):
+		m_Min(a_Min),
+		m_Max(a_Max)
 	{
-		LOGWARNING("cCuboid(int, int, int, int, int, int) constructor is deprecated, use cCuboid(Vector3i, Vector3i) constructor instead.");
+		Sort();
 	}
 
-	void Assign(int a_X1, int a_Y1, int a_Z1, int a_X2, int a_Y2, int a_Z2);
-	void Assign(const cCuboid & a_SrcCuboid) { *this = a_SrcCuboid; }
-
-	void Sort(void);
-
-	int DifX(void) const { return p2.x - p1.x; }
-	int DifY(void) const { return p2.y - p1.y; }
-	int DifZ(void) const { return p2.z - p1.z; }
+	Vector3<T> Diff() const { return p2 - p1; }
 
 	/** Returns the volume of the cuboid, in blocks.
 	Note that the volume considers both coords inclusive.
 	Works on unsorted cuboids, too. */
-	int GetVolume(void) const;
+	T Volume(void) const
+	{
+		static_assert(std::is_signed<T>::value, "cCuboid<T> assumes T is signed");
+		auto Diff = Dif();
+		Diff.Abs();
+		Diff += Vector3<T>{ 1, 1, 1 };
+		return Diff.x * Diff.y * Diff.z;
+	}
+
+	void Move(Vector3<T> a_Offset)
+	{
+		m_Min += a_Offset;
+		m_Max += a_Offset;
+	}
+
+	void Expand(Vector3<T> a_ExpandSize)
+	{
+		m_Min -= a_ExpandSize;
+		m_Max += a_ExpandSize;
+	}
 
 	/** Returns true if the cuboids have at least one voxel in common. Both coords are considered inclusive.
 	Assumes both cuboids are sorted. */
-	inline bool DoesIntersect(const cCuboid & a_Other) const
+	bool DoesIntersect(const cCuboid & a_Other) const
 	{
-		ASSERT(IsSorted());
-		ASSERT(a_Other.IsSorted());
-
 		// In order for cuboids to intersect, each of their coord intervals need to intersect
 		return (
 			DoIntervalsIntersect(p1.x, p2.x, a_Other.p1.x, a_Other.p2.x) &&
@@ -55,73 +58,155 @@ public:
 		);
 	}
 
-	bool IsInside(Vector3i v) const
+	/** Returns the union of the two cuboids. */
+	cCuboid Union(const cCuboid & a_Other) const
+	{
+		return {
+			VectorMin(m_Min, a_Other.m_Min),
+			VectorMax(m_Max, a_Other.m_Max)
+		};
+	}
+
+	/** Returns the intersection of the two cuboids. */
+	cCuboid Intersection(const cCuboid & a_Other) const
+	{
+		return {
+			VectorMax(m_Min, a_Other.m_Min),
+			VectorMin(m_Max, a_Other.m_Max)
+		};
+	}
+
+	bool IsEmpty() const
 	{
 		return (
-			(v.x >= p1.x) && (v.x <= p2.x) &&
-			(v.y >= p1.y) && (v.y <= p2.y) &&
-			(v.z >= p1.z) && (v.z <= p2.z)
+		    (m_Min.x == m_Max.x) ||
+		    (m_Min.y == m_Max.y) ||
+		    (m_Min.z == m_Max.z)
 		);
 	}
 
-	bool IsInside(int a_X, int a_Y, int a_Z) const
+	template <typename U>
+	bool IsInside(Vector3<U> v) const
 	{
 		return (
-			(a_X >= p1.x) && (a_X <= p2.x) &&
-			(a_Y >= p1.y) && (a_Y <= p2.y) &&
-			(a_Z >= p1.z) && (a_Z <= p2.z)
+			(v.x >= m_Min.x) && (v.x <= m_Max.x) &&
+			(v.y >= m_Min.y) && (v.y <= m_Max.y) &&
+			(v.z >= m_Min.z) && (v.z <= m_Max.z)
 		);
 	}
 
-	bool IsInside(Vector3d v) const
+	bool IsInside(const cCuboid & a_Other) const
 	{
-		return (
-			(v.x >= p1.x) && (v.x <= p2.x) &&
-			(v.y >= p1.y) && (v.y <= p2.y) &&
-			(v.z >= p1.z) && (v.z <= p2.z)
-		);
+		return (IsInside(a_Other.m_Min) && IsInside(a_Other.m_Max));
 	}
 
 	/** Returns true if this cuboid is completely inside the specifie cuboid (in all 6 coords).
 	Assumes both cuboids are sorted. */
-	bool IsCompletelyInside(const cCuboid & a_Outer) const;
+	bool IsCompletelyInside(const cCuboid & a_Outer) const
+	{
+		return (
+		        a_Outer.IsInside(m_Min) &&
+		        a_Outer.IsInside(m_Max)
+	   );
+	}
 
 	/** Moves the cuboid by the specified offsets in each direction */
-	void Move(int a_OfsX, int a_OfsY, int a_OfsZ);
+	void Move(Vector3<T> a_Offset)
+	{
+		p1 += a_Offset;
+		p2 += a_Offset;
+	}
 
 	/** Expands the cuboid by the specified amount in each direction.
 	Works on unsorted cuboids as well.
 	Note that this function doesn't check for underflows when using negative amounts. */
-	void Expand(int a_SubMinX, int a_AddMaxX, int a_SubMinY, int a_AddMaxY, int a_SubMinZ, int a_AddMaxZ);
+	void Expand(Vector3<T> a_SubMin, Vector3<T> a_AddMax)
+	{
+		p1 -= a_SubMin;
+		p2 += a_AddMax;
+	}
 
 	/** Clamps both X coords to the specified range. Works on unsorted cuboids, too. */
-	void ClampX(int a_MinX, int a_MaxX);
+	void ClampX(T a_MinX, T a_MaxX)
+	{
+		m_Min.x = Clamp(m_Min.x, a_MinX, a_MaxX);
+		m_Max.x = Clamp(m_Max.x, a_MinX, a_MaxX);
+	}
 
 	/** Clamps both Y coords to the specified range. Works on unsorted cuboids, too. */
-	void ClampY(int a_MinY, int a_MaxY);
+	void ClampY(T a_MinY, T a_MaxY)
+	{
+		m_Min.y = Clamp(m_Min.y, a_MinY, a_MaxY);
+		m_Max.y = Clamp(m_Max.y, a_MinY, a_MaxY);
+	}
 
 	/** Clamps both Z coords to the specified range. Works on unsorted cuboids, too. */
-	void ClampZ(int a_MinZ, int a_MaxZ);
-
-	/** Returns true if the coords are properly sorted (lesser in p1, greater in p2) */
-	bool IsSorted(void) const;
+	void ClampZ(T a_MinZ, T a_MaxZ)
+	{
+		m_Min.z = Clamp(m_Min.z, a_MinZ, a_MaxZ);
+		m_Max.z = Clamp(m_Max.z, a_MinZ, a_MaxZ);
+	}
 
 	/** If needed, expands the cuboid so that it contains the specified point. Assumes sorted. Doesn't contract. */
-	void Engulf(Vector3i a_Point);
+	void Engulf(Vector3<T> a_Point)
+	{
+		m_Min = VectorMin(m_Min, a_Point);
+		m_Max = VectorMax(m_Max, a_Point);
+	}
+
+	Vector3<T> GetMin() const { return m_Min; }
+	Vector3<T> GetMax() const { return m_Max; }
+
+	void SetMin(Vector3<T> a_NewMin)
+	{
+		m_Min = a_NewMin;
+		m_Max = VectorMax(a_NewMin, m_Max);
+	}
+	void SetMax(Vector3<T> a_NewMax)
+	{
+		m_Max = a_NewMax;
+		m_Min = VectorMin(a_NewMax, m_Min);
+	}
 
 private:
 
+	Vector3<T> m_Min, m_Max;  // Maintained as m_Min.[xyz] <= m_Max.[xyz] 
+
 	/** Returns true if the two specified intervals have a non-empty union */
-	inline static bool DoIntervalsIntersect(int a_Min1, int a_Max1, int a_Min2, int a_Max2)
+	static bool DoIntervalsIntersect(T a_Min1, T a_Max1, T a_Min2, T a_Max2)
 	{
 		ASSERT(a_Min1 <= a_Max1);
 		ASSERT(a_Min2 <= a_Max2);
 		return ((a_Min1 <= a_Max2) && (a_Max1 >= a_Min2));
 	}
 
-} ;
-// tolua_end
+	void Sort()
+	{
+		m_Min = VectorMin(p1, p2);
+		m_Max = VectorMax(p1, p2);
+	}
 
+	template <typename U>
+	static Vector3<U> VectorMin(Vector3<U> a_Vec1, Vector3<U> a_Vec2)
+	{
+		return {
+			std::min(a_Vec1.x, a_Vec2.x),
+			std::min(a_Vec1.y, a_Vec2.y),
+			std::min(a_Vec1.z, a_Vec2.z)
+		};
+	}
+
+	template <typename U>
+	static Vector3<U> VectorMax(Vector3<U> a_Vec1, Vector3<U> a_Vec2)
+	{
+		return {
+			std::max(a_Vec1.x, a_Vec2.x),
+			std::max(a_Vec1.y, a_Vec2.y),
+			std::max(a_Vec1.z, a_Vec2.z)
+		};
+	}
+
+};
 
 
 
