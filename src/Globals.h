@@ -56,7 +56,7 @@
 
 	// Use non-standard defines in <cmath>
 	#define _USE_MATH_DEFINES
-
+/*
 	#ifdef _DEBUG
 		// Override the "new" operator to include file and line specification for debugging memory leaks
 		// Ref.: https://social.msdn.microsoft.com/Forums/en-US/ebc7dd7a-f3c6-49f1-8a60-e381052f21b6/debugging-memory-leaks?forum=vcgeneral#53f0cc89-62fe-45e8-bbf0-56b89f2a1901
@@ -74,6 +74,7 @@
 			// The CRT has a definition for this operator new that stores the debugging info for leak-finding later.
 		#endif
 	#endif
+*/
 
 #elif defined(__GNUC__)
 
@@ -128,7 +129,7 @@
 #endif
 
 
-#include <stddef.h>
+#include <cstddef>
 
 
 // Integral types with predefined sizes:
@@ -183,7 +184,7 @@ template class SizeChecker<UInt8,  1>;
 
 
 
-// OS-dependent stuff:
+// Windows.h related defines:
 #ifdef _WIN32
 
 	#define WIN32_LEAN_AND_MEAN
@@ -191,15 +192,6 @@ template class SizeChecker<UInt8,  1>;
 
 	// Windows SDK defines min and max macros, messing up with our std::min and std::max usage
 	#define NOMINMAX
-
-	#include <Windows.h>
-	#include <winsock2.h>
-	#include <Ws2tcpip.h>  // IPv6 stuff
-
-	// Windows SDK defines GetFreeSpace as a constant, probably a Win16 API remnant
-	#ifdef GetFreeSpace
-		#undef GetFreeSpace
-	#endif  // GetFreeSpace
 #else
 	#include <sys/types.h>
 	#include <sys/time.h>
@@ -210,10 +202,7 @@ template class SizeChecker<UInt8,  1>;
 	#include <time.h>
 	#include <dirent.h>
 	#include <errno.h>
-	#include <iostream>
 	#include <cstring>
-	#include <pthread.h>
-	#include <semaphore.h>
 	#include <fcntl.h>
 	#include <unistd.h>
 #endif
@@ -232,8 +221,10 @@ template class SizeChecker<UInt8,  1>;
 #include <sys/stat.h>
 #include <cassert>
 #include <cstdio>
-#include <cmath>
 #include <cstdarg>
+#include <cstring>
+#include <cmath>
+#include <ctime>
 
 
 
@@ -365,6 +356,9 @@ template class SizeChecker<UInt8,  1>;
 	};
 
 	#ifdef _WIN32
+		#include <Windows.h>
+		#undef GetFreeSpace
+
 		#if (defined(_MSC_VER) && defined(_DEBUG))
 			#define DBG_BREAK _CrtDbgBreak()
 		#else

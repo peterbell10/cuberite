@@ -4,11 +4,7 @@
 // Implements the various string helper functions:
 
 #include "Globals.h"
-
-#ifdef _MSC_VER
-	// Under MSVC, link to WinSock2 (needed by RawBEToUTF8's byteswapping)
-	#pragma comment(lib, "ws2_32.lib")
-#endif
+#include "Endianness.h"
 
 
 
@@ -638,21 +634,21 @@ std::u16string UTF8ToRawBEUTF16(const AString & a_UTF8)
 				// UTF-16 surrogate values are illegal in UTF-32
 				ch = ' ';
 			}
-			unsigned short v = htons(static_cast<unsigned short>(ch));
+			unsigned short v = HostToNet(static_cast<unsigned short>(ch));
 			UTF16.push_back(static_cast<char16_t>(v));
 		}
 		else if (ch > UNI_MAX_UTF16)
 		{
 			// Invalid value, replace with a space
-			unsigned short v = htons(' ');
+			unsigned short v = HostToNet(static_cast<unsigned short>(' '));
 			UTF16.push_back(static_cast<char16_t>(v));
 		}
 		else
 		{
 			// target is a character in range 0xFFFF - 0x10FFFF.
 			ch -= halfBase;
-			auto v1 = htons(static_cast<uint16_t>((ch >> halfShift) + UNI_SUR_HIGH_START));
-			auto v2 = htons(static_cast<uint16_t>((ch & halfMask) + UNI_SUR_LOW_START));
+			auto v1 = HostToNet(static_cast<uint16_t>((ch >> halfShift) + UNI_SUR_HIGH_START));
+			auto v2 = HostToNet(static_cast<uint16_t>((ch & halfMask) + UNI_SUR_LOW_START));
 			UTF16.push_back(static_cast<char16_t>(v1));
 			UTF16.push_back(static_cast<char16_t>(v2));
 		}

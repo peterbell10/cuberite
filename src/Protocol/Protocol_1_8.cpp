@@ -23,6 +23,7 @@ Implements the 1.8 protocol classes:
 #include "../CompositeChat.h"
 #include "../Statistics.h"
 #include "../UUID.h"
+#include "Endianness.h"
 
 #include "../WorldStorage/FastNBT.h"
 #include "../WorldStorage/EnchantmentSerializer.h"
@@ -2230,7 +2231,7 @@ void cProtocol_1_8_0::HandlePacketLoginEncryptionResponse(cByteBuffer & a_ByteBu
 		m_Client->Kick("Hacked client");
 		return;
 	}
-	if (ntohl(DecryptedNonce[0]) != static_cast<unsigned>(reinterpret_cast<uintptr_t>(this)))
+	if (NetToHost(DecryptedNonce[0]) != static_cast<unsigned>(reinterpret_cast<uintptr_t>(this)))
 	{
 		LOGD("Bad nonce value");
 		m_Client->Kick("Hacked client");

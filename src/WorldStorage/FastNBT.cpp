@@ -5,6 +5,7 @@
 
 #include "Globals.h"
 #include "FastNBT.h"
+#include "Endianness.h"
 
 
 
@@ -518,7 +519,7 @@ void cFastNBTWriter::AddByte(const AString & a_Name, unsigned char a_Value)
 void cFastNBTWriter::AddShort(const AString & a_Name, Int16 a_Value)
 {
 	TagCommon(a_Name, TAG_Short);
-	UInt16 Value = htons(static_cast<UInt16>(a_Value));
+	UInt16 Value = HostToNetwork2(&a_Value);
 	m_Result.append(reinterpret_cast<const char *>(&Value), 2);
 }
 
@@ -529,7 +530,7 @@ void cFastNBTWriter::AddShort(const AString & a_Name, Int16 a_Value)
 void cFastNBTWriter::AddInt(const AString & a_Name, Int32 a_Value)
 {
 	TagCommon(a_Name, TAG_Int);
-	UInt32 Value = htonl(static_cast<UInt32>(a_Value));
+	UInt32 Value = HostToNetwork4(&a_Value);
 	m_Result.append(reinterpret_cast<const char *>(&Value), 4);
 }
 
@@ -573,7 +574,7 @@ void cFastNBTWriter::AddDouble(const AString & a_Name, double a_Value)
 void cFastNBTWriter::AddString(const AString & a_Name, const AString & a_Value)
 {
 	TagCommon(a_Name, TAG_String);
-	UInt16 len = htons(static_cast<UInt16>(a_Value.size()));
+	UInt16 len = HostToNet(static_cast<UInt16>(a_Value.size()));
 	m_Result.append(reinterpret_cast<const char *>(&len), 2);
 	m_Result.append(a_Value.c_str(), a_Value.size());
 }
@@ -585,7 +586,7 @@ void cFastNBTWriter::AddString(const AString & a_Name, const AString & a_Value)
 void cFastNBTWriter::AddByteArray(const AString & a_Name, const char * a_Value, size_t a_NumElements)
 {
 	TagCommon(a_Name, TAG_ByteArray);
-	UInt32 len = htonl(static_cast<UInt32>(a_NumElements));
+	UInt32 len = HostToNet(static_cast<UInt32>(a_NumElements));
 	m_Result.append(reinterpret_cast<const char *>(&len), 4);
 	m_Result.append(a_Value, a_NumElements);
 }
@@ -597,7 +598,7 @@ void cFastNBTWriter::AddByteArray(const AString & a_Name, const char * a_Value, 
 void cFastNBTWriter::AddIntArray(const AString & a_Name, const int * a_Value, size_t a_NumElements)
 {
 	TagCommon(a_Name, TAG_IntArray);
-	UInt32 len = htonl(static_cast<UInt32>(a_NumElements));
+	UInt32 len = HostToNet(static_cast<UInt32>(a_NumElements));
 	size_t cap = m_Result.capacity();
 	size_t size = m_Result.length();
 	if ((cap - size) < (4 + a_NumElements * 4))
@@ -607,7 +608,7 @@ void cFastNBTWriter::AddIntArray(const AString & a_Name, const int * a_Value, si
 	m_Result.append(reinterpret_cast<const char *>(&len), 4);
 	for (size_t i = 0; i < a_NumElements; i++)
 	{
-		UInt32 Element = htonl(static_cast<UInt32>(a_Value[i]));
+		UInt32 Element = HostToNetwork4(&a_Value[i]);
 		m_Result.append(reinterpret_cast<const char *>(&Element), 4);
 	}
 }
@@ -628,7 +629,7 @@ void cFastNBTWriter::Finish(void)
 
 void cFastNBTWriter::WriteString(const char * a_Data, UInt16 a_Length)
 {
-	UInt16 Len = htons(a_Length);
+	UInt16 Len = HostToNetwork2(&a_Length);
 	m_Result.append(reinterpret_cast<const char *>(&Len), 2);
 	m_Result.append(a_Data, a_Length);
 }

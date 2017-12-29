@@ -13,6 +13,7 @@
 
 #include "Network.h"
 #include <event2/listener.h>
+#include "OSSupport/WindowsUndefs.h"
 #include "CriticalSection.h"
 
 

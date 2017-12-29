@@ -3,6 +3,11 @@
 
 #include "Errors.h"
 
+#ifdef _WIN32
+	#include <Windows.h>
+	#include "OSSupport/WindowsUndefs.h"
+#endif
+
 AString GetOSErrorString( int a_ErrNo)
 {
 	char buffer[ 1024 ];

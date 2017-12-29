@@ -4,6 +4,7 @@
 
 #include "Globals.h"
 #include "UUID.h"
+#include "Endianness.h"
 
 #include "mbedtls/md5.h"
 
@@ -218,14 +219,14 @@ std::array<Byte, 16> cUUID::ToRaw() const
 	{
 		// Convert to microsoft mixed-endian format
 		// First 3 components are host-endian, last 2 are network
-		auto First = reinterpret_cast<UInt32 *>(Raw.data());
-		*First = ntohl(*First);
+		UInt32 First = HostToNetwork4(Raw.data());
+		std::memcpy(Raw.data(), &First, sizeof(First));
 
-		auto Second = reinterpret_cast<UInt16 *>(&Raw[4]);
-		*Second = ntohs(*Second);
+		UInt16 Second = HostToNetwork2(Raw.data() + 4);
+		std::memcpy(Raw.data() + 4, &Second, sizeof(Second));
 
-		auto Third = Second + 1;
-		*Third = ntohs(*Third);
+		UInt16 Third = HostToNetwork2(m_UUID.data() + 6);
+		std::memcpy(Raw.data() + 6, &Third, sizeof(Third));
 	}
 
 	return Raw;
@@ -246,14 +247,14 @@ void cUUID::FromRaw(const std::array<Byte, 16> & a_Raw)
 
 	// Convert from microsoft mixed-endian format
 	// First 3 components are host-endian, last 2 are network
-	auto First = reinterpret_cast<UInt32 *>(m_UUID.data());
-	*First = htonl(*First);
+	UInt32 First = HostToNetwork4(m_UUID.data());
+	std::memcpy(m_UUID.data(), &First, sizeof(First));
 
-	auto Second = reinterpret_cast<UInt16 *>(&m_UUID[4]);
-	*Second = htons(*Second);
+	UInt16 Second = HostToNetwork2(m_UUID.data() + 4);
+	std::memcpy(m_UUID.data() + 4, &Second, sizeof(Second));
 
-	auto Third = Second + 1;
-	*Third = htons(*Third);
+	UInt16 Third = HostToNetwork2(m_UUID.data() + 6);
+	std::memcpy(m_UUID.data() + 6, &Third, sizeof(Third));
 }
 
 

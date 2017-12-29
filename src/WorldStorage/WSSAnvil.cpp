@@ -9,6 +9,7 @@
 #include "EnchantmentSerializer.h"
 #include "zlib/zlib.h"
 #include "json/json.h"
+#include "Endianness.h"
 #include "../World.h"
 #include "../Item.h"
 #include "../ItemGrid.h"
@@ -3469,7 +3470,7 @@ bool cWSSAnvil::cMCAFile::GetChunkData(const cChunkCoords & a_Chunk, AString & a
 	{
 		LocalZ = 32 + LocalZ;
 	}
-	unsigned ChunkLocation = ntohl(m_Header[LocalX + 32 * LocalZ]);
+	unsigned ChunkLocation = NetToHost(m_Header[LocalX + 32 * LocalZ]);
 	unsigned ChunkOffset = ChunkLocation >> 8;
 	if (ChunkOffset < 2)
 	{
@@ -3484,7 +3485,7 @@ bool cWSSAnvil::cMCAFile::GetChunkData(const cChunkCoords & a_Chunk, AString & a
 		m_ParentSchema.ChunkLoadFailed(a_Chunk.m_ChunkX, a_Chunk.m_ChunkZ, "Cannot read chunk size", "");
 		return false;
 	}
-	ChunkSize = ntohl(ChunkSize);
+	ChunkSize = NetToHost(ChunkSize);
 	if (ChunkSize < 1)
 	{
 		// Chunk size too small
@@ -3543,7 +3544,7 @@ bool cWSSAnvil::cMCAFile::SetChunkData(const cChunkCoords & a_Chunk, const AStri
 
 	// Store the chunk data:
 	m_File.Seek(static_cast<int>(ChunkSector * 4096));
-	UInt32 ChunkSize = htonl(static_cast<UInt32>(a_Data.size() + 1));
+	UInt32 ChunkSize = HostToNet(static_cast<UInt32>(a_Data.size() + 1));
 	if (m_File.Write(&ChunkSize, 4) != 4)
 	{
 		LOGWARNING("Cannot save chunk [%d, %d], writing(1) data to file \"%s\" failed", a_Chunk.m_ChunkX, a_Chunk.m_ChunkZ, GetFileName().c_str());
@@ -3580,10 +3581,10 @@ bool cWSSAnvil::cMCAFile::SetChunkData(const cChunkCoords & a_Chunk, const AStri
 	}
 
 	// Store the header info in the table
-	m_Header[LocalX + 32 * LocalZ] = htonl(static_cast<UInt32>((ChunkSector << 8) | ChunkSize));
+	m_Header[LocalX + 32 * LocalZ] = HostToNet(static_cast<UInt32>((ChunkSector << 8) | ChunkSize));
 
 	// Set the modification time
-	m_TimeStamps[LocalX + 32 * LocalZ] =  htonl(static_cast<UInt32>(time(nullptr)));
+	m_TimeStamps[LocalX + 32 * LocalZ] =  HostToNet(static_cast<UInt32>(time(nullptr)));
 
 	if (m_File.Seek(0) < 0)
 	{
@@ -3611,7 +3612,7 @@ bool cWSSAnvil::cMCAFile::SetChunkData(const cChunkCoords & a_Chunk, const AStri
 unsigned cWSSAnvil::cMCAFile::FindFreeLocation(int a_LocalX, int a_LocalZ, const AString & a_Data)
 {
 	// See if it fits the current location:
-	unsigned ChunkLocation = ntohl(m_Header[a_LocalX + 32 * a_LocalZ]);
+	unsigned ChunkLocation = NetToHost(m_Header[a_LocalX + 32 * a_LocalZ]);
 	unsigned ChunkLen = ChunkLocation & 0xff;
 	if (a_Data.size() + MCA_CHUNK_HEADER_LENGTH <= (ChunkLen * 4096))
 	{
@@ -3622,7 +3623,7 @@ unsigned cWSSAnvil::cMCAFile::FindFreeLocation(int a_LocalX, int a_LocalZ, const
 	unsigned MaxLocation = 2 << 8;  // Minimum sector is #2 - after the headers
 	for (size_t i = 0; i < ARRAYCOUNT(m_Header); i++)
 	{
-		ChunkLocation = ntohl(m_Header[i]);
+		ChunkLocation = NetToHost(m_Header[i]);
 		ChunkLocation = ChunkLocation + ((ChunkLocation & 0xff) << 8);  // Add the number of sectors used; don't care about the 4th byte
 		if (MaxLocation < ChunkLocation)
 		{

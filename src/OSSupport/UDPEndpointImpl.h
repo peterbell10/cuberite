@@ -11,6 +11,7 @@
 
 #include "Network.h"
 #include <event2/event.h>
+#include "OSSupport/WindowsUndefs.h"
 
 
 

@@ -25,6 +25,9 @@ typedef std::shared_ptr<cCryptoKey> cCryptoKeyPtr;
 class cX509Cert;
 typedef std::shared_ptr<cX509Cert> cX509CertPtr;
 
+struct sockaddr_in;
+struct sockaddr_in6;
+
 
 
 

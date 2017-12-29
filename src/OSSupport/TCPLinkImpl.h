@@ -14,6 +14,7 @@
 #include "Network.h"
 #include <event2/event.h>
 #include <event2/bufferevent.h>
+#include "OSSupport/WindowsUndefs.h"
 #include "../mbedTLS++/SslContext.h"
 
 

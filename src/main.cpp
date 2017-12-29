@@ -25,6 +25,8 @@
 #endif
 
 #ifdef _MSC_VER
+	#include <Windows.h>
+	#include "OSSupport/WindowsUndefs.h"
 	#include <dbghelp.h>
 #endif  // _MSC_VER
 

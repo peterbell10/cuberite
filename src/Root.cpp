@@ -8,6 +8,8 @@
 
 // OS-specific headers:
 #if defined(_WIN32)
+	#include <Windows.h>
+	#include "OSSupport/WindowsUndefs.h"
 	#include <psapi.h>
 #elif defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 	#include <signal.h>

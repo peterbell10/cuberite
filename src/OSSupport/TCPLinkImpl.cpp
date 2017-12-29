@@ -8,7 +8,8 @@
 #include "mbedTLS++/SslConfig.h"
 #include "NetworkSingleton.h"
 #include "ServerHandleImpl.h"
-#include "event2/buffer.h"
+#include <event2/buffer.h>
+#include "OSSupport/WindowsUndefs.h"
 
 
 

@@ -14,6 +14,7 @@
 #include "Blocks/BlockHandler.h"
 #include "ChunkData.h"
 #include "BlockEntities/BlockEntity.h"
+#include "Endianness.h"
 
 
 
@@ -598,9 +599,9 @@ void cBlockArea::DumpToRawFile(const AString & a_FileName)
 		LOGWARNING("cBlockArea: Cannot open file \"%s\" for raw dump", a_FileName.c_str());
 		return;
 	}
-	UInt32 SizeX = ntohl(static_cast<UInt32>(m_Size.x));
-	UInt32 SizeY = ntohl(static_cast<UInt32>(m_Size.y));
-	UInt32 SizeZ = ntohl(static_cast<UInt32>(m_Size.z));
+	UInt32 SizeX = NetToHost(static_cast<UInt32>(m_Size.x));
+	UInt32 SizeY = NetToHost(static_cast<UInt32>(m_Size.y));
+	UInt32 SizeZ = NetToHost(static_cast<UInt32>(m_Size.z));
 	f.Write(&SizeX, 4);
 	f.Write(&SizeY, 4);
 	f.Write(&SizeZ, 4);

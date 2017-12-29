@@ -40,6 +40,7 @@ SET (HDRS
 	TCPLinkImpl.h
 	UDPEndpointImpl.h
 	WinStackWalker.h
+	WindowsUndefs.h
 )
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

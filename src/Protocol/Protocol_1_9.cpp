@@ -28,6 +28,7 @@ Implements the 1.9 protocol classes:
 #include "../StringCompression.h"
 #include "../CompositeChat.h"
 #include "../Statistics.h"
+#include "Endianness.h"
 
 #include "../WorldStorage/FastNBT.h"
 #include "../WorldStorage/EnchantmentSerializer.h"
@@ -2280,7 +2281,7 @@ void cProtocol_1_9_0::HandlePacketLoginEncryptionResponse(cByteBuffer & a_ByteBu
 		m_Client->Kick("Hacked client");
 		return;
 	}
-	if (ntohl(DecryptedNonce[0]) != static_cast<unsigned>(reinterpret_cast<uintptr_t>(this)))
+	if (NetToHost(DecryptedNonce[0]) != static_cast<unsigned>(reinterpret_cast<uintptr_t>(this)))
 	{
 		LOGD("Bad nonce value");
 		m_Client->Kick("Hacked client");

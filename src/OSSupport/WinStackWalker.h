@@ -39,6 +39,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef _WIN32  // This is Windows-only code
 
+#include <Windows.h>
+#include "OSSupport/WindowsUndefs.h"
+
 
 
 

@@ -14,6 +14,9 @@
 #if defined(_MSC_VER) && defined(_DEBUG)
 	// Code adapted from MSDN: https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
 
+	#include <Windows.h>
+	#undef GetFreeSpace
+
 	const DWORD MS_VC_EXCEPTION = 0x406D1388;
 	#pragma pack(push, 8)
 		struct THREADNAME_INFO

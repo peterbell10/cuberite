@@ -8,7 +8,12 @@
 #include "File.h"
 #include <fstream>
 #ifdef _WIN32
+	#include <Windows.h>
+	#undef GetFreeSpace
+	#undef DeleteFile
 	#include <share.h>  // for _SH_DENYWRITE
+#else  // _WIN32
+	#include <dirent.h>
 #endif  // _WIN32
 
 

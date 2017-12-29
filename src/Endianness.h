@@ -1,33 +1,93 @@
 
 #pragma once
 
-#undef  ntohll
-#define ntohll(x) (((static_cast<UInt64>(ntohl(static_cast<UInt32>(x)))) << 32) + ntohl(x >> 32))
+#ifdef _WIN32
+	#include <intrin.h>  // for _byteswap functions
+#endif
 
-
-
-
-
-// Changes endianness
-inline UInt64 HostToNetwork8(const void * a_Value)
+namespace Detail
 {
-	UInt64 buf;
-	memcpy( &buf, a_Value, sizeof( buf));
-	buf = (( ( static_cast<UInt64>(htonl(static_cast<UInt32>(buf)))) << 32) + htonl(buf >> 32));
-	return buf;
+	inline UInt64 ByteSwap(UInt64 a_Value)
+	{
+		#ifdef _WIN32
+			return _byteswap_uint64(a_Value);
+		#else
+			return __builtin_bswap64(a_Value);
+		#endif
+	}
+
+	inline UInt32 ByteSwap(UInt32 a_Value)
+	{
+		#ifdef _WIN32
+			return _byteswap_ulong(a_Value);
+		#else
+			return __builtin_bswap32(a_Value);
+		#endif
+	}
+	
+	inline UInt16 ByteSwap(UInt16 a_Value)
+	{
+		#ifdef _WIN32
+			return _byteswap_ushort(a_Value);
+		#else
+			return __builtin_bswap16(a_Value);
+		#endif
+	}
+
+	template <typename T>
+	T ByteSwapIfLittleEndian(T a_Value)
+	{
+		#if !defined(_WIN32) && !defined(__BYTE_ORDER__)
+			#error Could not determine host byte order
+		#endif
+
+		#if defined(_WIN32) || (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+			return ByteSwap(a_Value);
+		#else
+			return a_Value;
+		#endif
+	}
+
+	template <typename T>
+	T ReadMemory(const void * a_Ptr)
+	{
+		T Buffer;
+		std::memcpy(&Buffer, a_Ptr, sizeof(Buffer));
+		return Buffer;
+	}
 }
 
 
+inline UInt64 HostToNet(UInt64 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
+inline UInt32 HostToNet(UInt32 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
+inline UInt16 HostToNet(UInt16 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
+
+inline UInt64 NetToHost(UInt64 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
+inline UInt32 NetToHost(UInt32 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
+inline UInt16 NetToHost(UInt16 a_Value) { return Detail::ByteSwapIfLittleEndian(a_Value); }
 
 
+
+
+
+inline UInt64 HostToNetwork8(const void * a_Value)
+{
+	return HostToNet(Detail::ReadMemory<UInt64>(a_Value));
+}
 
 inline UInt32 HostToNetwork4(const void * a_Value)
 {
-	UInt32 buf;
-	memcpy( &buf, a_Value, sizeof( buf));
-	buf = ntohl( buf);
-	return buf;
+	return HostToNet(Detail::ReadMemory<UInt32>(a_Value));
 }
+
+inline UInt16 HostToNetwork2(const void * a_Value)
+{
+	return HostToNet(Detail::ReadMemory<UInt16>(a_Value));
+}
+
+inline UInt64 NetworkToHost8(const void * a_Value) { return HostToNetwork8(a_Value); }
+inline UInt32 NetworkToHost4(const void * a_Value) { return HostToNetwork4(a_Value); }
+inline UInt16 NetworkToHost2(const void * a_Value) { return HostToNetwork2(a_Value); }
 
 
 
@@ -35,12 +95,9 @@ inline UInt32 HostToNetwork4(const void * a_Value)
 
 inline double NetworkToHostDouble8(const void * a_Value)
 {
-	UInt64 buf = 0;
-	memcpy(&buf, a_Value, 8);
-	buf = ntohll(buf);
-	double x;
-	memcpy(&x, &buf, sizeof(double));
-	return x;
+	static_assert(sizeof(double) == sizeof(UInt64), "");
+	UInt64 Buffer = NetworkToHost8(a_Value);
+	return Detail::ReadMemory<double>(&Buffer);
 }
 
 
@@ -49,10 +106,8 @@ inline double NetworkToHostDouble8(const void * a_Value)
 
 inline Int64 NetworkToHostLong8(const void * a_Value)
 {
-	UInt64 buf;
-	memcpy(&buf, a_Value, 8);
-	buf = ntohll(buf);
-	return *reinterpret_cast<Int64 *>(&buf);
+	UInt64 Buffer = NetworkToHost8(a_Value);
+	return Detail::ReadMemory<Int64>(&Buffer);
 }
 
 
@@ -61,10 +116,7 @@ inline Int64 NetworkToHostLong8(const void * a_Value)
 
 inline UInt64 NetworkToHostULong8(const void * a_Value)
 {
-	UInt64 buf;
-	memcpy(&buf, a_Value, 8);
-	buf = ntohll(buf);
-	return buf;
+	return NetworkToHost8(a_Value);
 }
 
 
@@ -73,12 +125,9 @@ inline UInt64 NetworkToHostULong8(const void * a_Value)
 
 inline float NetworkToHostFloat4(const void * a_Value)
 {
-	UInt32 buf;
-	float x;
-	memcpy(&buf, a_Value, 4);
-	buf = ntohl(buf);
-	memcpy(&x, &buf, sizeof(float));
-	return x;
+	static_assert(sizeof(float) == sizeof(UInt32), "");
+	UInt32 Buffer = NetworkToHost4(a_Value);
+	return Detail::ReadMemory<float>(&Buffer);
 }
 
 
