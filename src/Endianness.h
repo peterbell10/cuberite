@@ -37,14 +37,16 @@ namespace Detail
 	template <typename T>
 	T ByteSwapIfLittleEndian(T a_Value)
 	{
-		#if !defined(_WIN32) && !defined(__BYTE_ORDER__)
+		#if !defined(__BYTE_ORDER__) && !defined(_WIN32)
 			#error Could not determine host byte order
 		#endif
 
-		#if defined(_WIN32) || (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+		#if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) || defined(_WIN32)
 			return ByteSwap(a_Value);
-		#else
+		#elif (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 			return a_Value;
+		#else
+			#error Unsupported byte order
 		#endif
 	}
 
