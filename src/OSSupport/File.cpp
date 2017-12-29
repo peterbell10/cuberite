@@ -9,8 +9,7 @@
 #include <fstream>
 #ifdef _WIN32
 	#include <Windows.h>
-	#undef GetFreeSpace
-	#undef DeleteFile
+	#include "OSSupport/WindowsUndefs.h"
 	#include <share.h>  // for _SH_DENYWRITE
 #else  // _WIN32
 	#include <dirent.h>
