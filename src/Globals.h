@@ -192,19 +192,6 @@ template class SizeChecker<UInt8,  1>;
 
 	// Windows SDK defines min and max macros, messing up with our std::min and std::max usage
 	#define NOMINMAX
-#else
-	#include <sys/types.h>
-	#include <sys/time.h>
-	#include <sys/socket.h>
-	#include <netinet/in.h>
-	#include <arpa/inet.h>
-	#include <netdb.h>
-	#include <time.h>
-	#include <dirent.h>
-	#include <errno.h>
-	#include <cstring>
-	#include <fcntl.h>
-	#include <unistd.h>
 #endif
 
 #if defined(ANDROID_NDK)

@@ -13,6 +13,7 @@
 	#include <share.h>  // for _SH_DENYWRITE
 #else  // _WIN32
 	#include <dirent.h>
+	#include <unistd.h>
 #endif  // _WIN32
 
 

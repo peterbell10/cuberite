@@ -28,6 +28,8 @@
 	#include <Windows.h>
 	#include "OSSupport/WindowsUndefs.h"
 	#include <dbghelp.h>
+#else
+	#include <unistd.h>
 #endif  // _MSC_VER
 
 #include "OSSupport/NetworkSingleton.h"

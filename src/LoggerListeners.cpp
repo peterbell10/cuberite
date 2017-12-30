@@ -6,6 +6,8 @@
 #if defined(_WIN32)
 	#include <Windows.h>
 	#include <io.h>  // Needed for _isatty(), not available on Linux
+#else
+	#include <unistd.h>  // for isatty()
 #endif
 
 
