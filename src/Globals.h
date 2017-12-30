@@ -205,7 +205,6 @@ template class SizeChecker<UInt8,  1>;
 
 
 // CRT stuff:
-#include <sys/stat.h>
 #include <cassert>
 #include <cstdio>
 #include <cstdarg>
