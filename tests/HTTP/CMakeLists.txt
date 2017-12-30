@@ -14,6 +14,7 @@ set (HTTP_SRCS
 	${CMAKE_SOURCE_DIR}/src/HTTP/TransferEncodingParser.cpp
 	${CMAKE_SOURCE_DIR}/src/HTTP/UrlClient.cpp
 	${CMAKE_SOURCE_DIR}/src/HTTP/UrlParser.cpp
+	${CMAKE_SOURCE_DIR}/src/OSSupport/Latch.cpp
 	${CMAKE_SOURCE_DIR}/src/StringUtils.cpp
 )
 

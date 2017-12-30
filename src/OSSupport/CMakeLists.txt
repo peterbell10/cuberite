@@ -11,6 +11,7 @@ SET (SRCS
 	HostnameLookup.cpp
 	IPLookup.cpp
 	IsThread.cpp
+	Latch.cpp
 	NetworkInterfaceEnum.cpp
 	NetworkLookup.cpp
 	NetworkSingleton.cpp
@@ -31,6 +32,7 @@ SET (HDRS
 	HostnameLookup.h
 	IPLookup.h
 	IsThread.h
+	Latch.h
 	Network.h
 	NetworkLookup.h
 	NetworkSingleton.h

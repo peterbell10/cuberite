@@ -1,6 +1,7 @@
 
 #include "Globals.h"
 #include "HTTP/UrlClient.h"
+#include "OSSupport/Latch.h"
 #include "OSSupport/NetworkSingleton.h"
 
 
@@ -12,8 +13,8 @@ class cCallbacks:
 	public cUrlClient::cCallbacks
 {
 public:
-	cCallbacks(cEvent & a_Event):
-		m_Event(a_Event)
+	cCallbacks(cLatch & a_Latch):
+		m_Latch(a_Latch)
 	{
 		LOGD("Created a cCallbacks instance at %p", reinterpret_cast<void *>(this));
 	}
@@ -78,7 +79,7 @@ public:
 	virtual void OnBodyFinished() override
 	{
 		LOG("Body finished.");
-		m_Event.Set();
+		m_Latch.CountDown();
 	}
 
 
@@ -91,11 +92,11 @@ public:
 	virtual void OnError(const AString & a_ErrorMsg) override
 	{
 		LOG("Error: %s", a_ErrorMsg.c_str());
-		m_Event.Set();
+		m_Latch.CountDown();
 	}
 
 protected:
-	cEvent & m_Event;
+	cLatch & m_Latch;
 };
 
 
@@ -105,14 +106,14 @@ protected:
 static int TestRequest1()
 {
 	LOG("Running test 1");
-	cEvent evtFinished;
-	auto callbacks = cpp14::make_unique<cCallbacks>(evtFinished);
+	cLatch Finished(1);
+	auto callbacks = cpp14::make_unique<cCallbacks>(Finished);
 	AStringMap options;
 	options["MaxRedirects"] = "0";
 	auto res = cUrlClient::Get("http://github.com", std::move(callbacks), AStringMap(), AString(), options);
 	if (res.first)
 	{
-		evtFinished.Wait();
+		Finished.Wait();
 	}
 	else
 	{
@@ -129,12 +130,12 @@ static int TestRequest1()
 static int TestRequest2()
 {
 	LOG("Running test 2");
-	cEvent evtFinished;
-	auto callbacks = cpp14::make_unique<cCallbacks>(evtFinished);
+	cLatch Finished(1);
+	auto callbacks = cpp14::make_unique<cCallbacks>(Finished);
 	auto res = cUrlClient::Get("http://github.com", std::move(callbacks));
 	if (res.first)
 	{
-		evtFinished.Wait();
+		Finished.Wait();
 	}
 	else
 	{
@@ -151,14 +152,14 @@ static int TestRequest2()
 static int TestRequest3()
 {
 	LOG("Running test 3");
-	cEvent evtFinished;
-	auto callbacks = cpp14::make_unique<cCallbacks>(evtFinished);
+	cLatch Finished(1);
+	auto callbacks = cpp14::make_unique<cCallbacks>(Finished);
 	AStringMap options;
 	options["MaxRedirects"] = "0";
 	auto res = cUrlClient::Get("https://github.com", std::move(callbacks), AStringMap(), AString(), options);
 	if (res.first)
 	{
-		evtFinished.Wait();
+		Finished.Wait();
 	}
 	else
 	{
@@ -175,12 +176,12 @@ static int TestRequest3()
 static int TestRequest4()
 {
 	LOG("Running test 4");
-	cEvent evtFinished;
-	auto callbacks = cpp14::make_unique<cCallbacks>(evtFinished);
+	cLatch Finished(1);
+	auto callbacks = cpp14::make_unique<cCallbacks>(Finished);
 	auto res = cUrlClient::Get("https://github.com", std::move(callbacks));
 	if (res.first)
 	{
-		evtFinished.Wait();
+		Finished.Wait();
 	}
 	else
 	{
