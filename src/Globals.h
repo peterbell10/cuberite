@@ -344,7 +344,7 @@ template class SizeChecker<UInt8,  1>;
 
 	#ifdef _WIN32
 		#include <Windows.h>
-		#undef GetFreeSpace
+		#include "OSSupport/WindowsUndefs.h"
 
 		#if (defined(_MSC_VER) && defined(_DEBUG))
 			#define DBG_BREAK _CrtDbgBreak()
