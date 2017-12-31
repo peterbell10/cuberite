@@ -39,6 +39,7 @@ cSpawnPrepare::cSpawnPrepare(cWorld & a_World, int a_SpawnChunkX, int a_SpawnChu
 	m_NextIdx(a_FirstIdx),
 	m_MaxIdx(a_PrepareDistance * a_PrepareDistance),
 	m_NumPrepared(0),
+	m_EvtFinished(1),
 	m_LastReportTime(std::chrono::steady_clock::now()),
 	m_LastReportChunkCount(0)
 {
@@ -99,7 +100,7 @@ void cSpawnPrepare::PreparedChunkCallback(int a_ChunkX, int a_ChunkZ)
 	m_NumPrepared += 1;
 	if (m_NumPrepared >= m_MaxIdx)
 	{
-		m_EvtFinished.Set();
+		m_EvtFinished.CountDown();
 		// Must return here, because "this" may have gotten deleted by the previous line
 		return;
 	}

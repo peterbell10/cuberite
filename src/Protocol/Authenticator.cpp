@@ -19,7 +19,7 @@
 
 #define DEFAULT_AUTH_SERVER "sessionserver.mojang.com"
 #define DEFAULT_AUTH_ADDRESS "/session/minecraft/hasJoined?username=%USERNAME%&serverId=%SERVERID%"
-
+using UniqueLock = std::unique_lock<std::mutex>;
 
 
 
@@ -65,9 +65,9 @@ void cAuthenticator::Authenticate(int a_ClientID, const AString & a_UserName, co
 		return;
 	}
 
-	cCSLock LOCK(m_CS);
+	UniqueLock LOCK(m_CS);
 	m_Queue.push_back(cUser(a_ClientID, a_UserName, a_ServerHash));
-	m_QueueNonempty.Set();
+	m_QueueNonempty.notify_one();
 }
 
 
@@ -88,7 +88,7 @@ void cAuthenticator::Start(cSettingsRepositoryInterface & a_Settings)
 void cAuthenticator::Stop(void)
 {
 	m_ShouldTerminate = true;
-	m_QueueNonempty.Set();
+	m_QueueNonempty.notify_all();
 	Wait();
 }
 
@@ -100,12 +100,12 @@ void cAuthenticator::Execute(void)
 {
 	for (;;)
 	{
-		cCSLock Lock(m_CS);
-		while (!m_ShouldTerminate && (m_Queue.size() == 0))
-		{
-			cCSUnlock Unlock(Lock);
-			m_QueueNonempty.Wait();
-		}
+		UniqueLock Lock(m_CS);
+		m_QueueNonempty.wait(Lock, [this]
+			{
+				return (m_ShouldTerminate || m_Queue.empty());
+			}
+		);
 		if (m_ShouldTerminate)
 		{
 			return;
@@ -117,7 +117,7 @@ void cAuthenticator::Execute(void)
 		AString UserName = User.m_Name;
 		AString ServerID = User.m_ServerID;
 		m_Queue.pop_front();
-		Lock.Unlock();
+		Lock.unlock();
 
 		AString NewUserName = UserName;
 		cUUID UUID;

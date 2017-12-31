@@ -12,11 +12,16 @@
 
 
 
-/** If the generation queue size exceeds this number, a warning will be output */
-const unsigned int QUEUE_WARNING_LIMIT = 1000;
+namespace
+{
+	/** If the generation queue size exceeds this number, a warning will be output */
+	const unsigned int QUEUE_WARNING_LIMIT = 1000;
 
-/** If the generation queue size exceeds this number, chunks with no clients will be skipped */
-const unsigned int QUEUE_SKIP_LIMIT = 500;
+	/** If the generation queue size exceeds this number, chunks with no clients will be skipped */
+	const unsigned int QUEUE_SKIP_LIMIT = 500;
+
+	using UniqueLock = std::unique_lock<std::mutex>;
+}
 
 
 
@@ -96,8 +101,8 @@ bool cChunkGenerator::Initialize(cPluginInterface & a_PluginInterface, cChunkSin
 void cChunkGenerator::Stop(void)
 {
 	m_ShouldTerminate = true;
-	m_Event.Set();
-	m_evtRemoved.Set();  // Wake up anybody waiting for empty queue
+	m_EventAdded.notify_all();
+	m_EventRemoved.notify_all();  // Wake up anybody waiting for empty queue
 	Wait();
 
 	delete m_Generator;
@@ -113,7 +118,7 @@ void cChunkGenerator::QueueGenerateChunk(int a_ChunkX, int a_ChunkZ, bool a_Forc
 	ASSERT(m_ChunkSink->IsChunkQueued(a_ChunkX, a_ChunkZ));
 
 	{
-		cCSLock Lock(m_CS);
+		UniqueLock Lock(m_CS);
 
 		// Add to queue, issue a warning if too many:
 		if (m_Queue.size() >= QUEUE_WARNING_LIMIT)
@@ -123,7 +128,7 @@ void cChunkGenerator::QueueGenerateChunk(int a_ChunkX, int a_ChunkZ, bool a_Forc
 		m_Queue.push_back(cQueueItem{a_ChunkX, a_ChunkZ, a_ForceGenerate, a_Callback});
 	}
 
-	m_Event.Set();
+	m_EventAdded.notify_one();
 }
 
 
@@ -144,12 +149,12 @@ void cChunkGenerator::GenerateBiomes(int a_ChunkX, int a_ChunkZ, cChunkDef::Biom
 
 void cChunkGenerator::WaitForQueueEmpty(void)
 {
-	cCSLock Lock(m_CS);
-	while (!m_ShouldTerminate && !m_Queue.empty())
-	{
-		cCSUnlock Unlock(Lock);
-		m_evtRemoved.Wait();
-	}
+	UniqueLock Lock(m_CS);
+	m_EventRemoved.wait(Lock, [this]
+		{
+			return (m_Queue.empty() || m_ShouldTerminate);
+		}
+	);
 }
 
 
@@ -158,7 +163,7 @@ void cChunkGenerator::WaitForQueueEmpty(void)
 
 int cChunkGenerator::GetQueueLength(void)
 {
-	cCSLock Lock(m_CS);
+	UniqueLock Lock(m_CS);
 	return static_cast<int>(m_Queue.size());
 }
 
@@ -202,8 +207,8 @@ void cChunkGenerator::Execute(void)
 
 	while (!m_ShouldTerminate)
 	{
-		cCSLock Lock(m_CS);
-		while (m_Queue.empty())
+		UniqueLock Lock(m_CS);
+		if (m_Queue.empty())
 		{
 			if ((NumChunksGenerated > 16) && (clock() - LastReportTick > CLOCKS_PER_SEC))
 			{
@@ -212,29 +217,30 @@ void cChunkGenerator::Execute(void)
 					NumChunksGenerated
 				); */
 			}
-			cCSUnlock Unlock(Lock);
-			m_Event.Wait();
+
+			m_EventAdded.wait(Lock, [this]
+				{
+					return (!m_Queue.empty() || m_ShouldTerminate);
+				}
+			);
+
 			if (m_ShouldTerminate)
 			{
 				return;
 			}
+
+			ASSERT(!m_Queue.empty());
 			NumChunksGenerated = 0;
 			GenerationStart = clock();
 			LastReportTick = clock();
 		}
 
-		if (m_Queue.empty())
-		{
-			// Sometimes the queue remains empty
-			// If so, we can't do any front() operations on it!
-			continue;
-		}
 
 		cQueueItem item = m_Queue.front();  // Get next chunk from the queue
 		bool SkipEnabled = (m_Queue.size() > QUEUE_SKIP_LIMIT);
 		m_Queue.erase(m_Queue.begin());  // Remove the item from the queue
-		Lock.Unlock();  // Unlock ASAP
-		m_evtRemoved.Set();
+		Lock.unlock();  // Unlock ASAP
+		m_EventRemoved.notify_all();
 
 		// Display perf info once in a while:
 		if ((NumChunksGenerated > 512) && (clock() - LastReportTick > 2 * CLOCKS_PER_SEC))

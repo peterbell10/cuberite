@@ -158,16 +158,16 @@ private:
 	int m_Seed;
 
 	/** CS protecting access to the queue. */
-	cCriticalSection m_CS;
+	std::mutex m_CS;
 
 	/** Queue of the chunks to be generated. Protected against multithreaded access by m_CS. */
 	cGenQueue m_Queue;
 
 	/** Set when an item is added to the queue or the thread should terminate. */
-	cEvent m_Event;
+	std::condition_variable m_EventAdded;
 
 	/** Set when an item is removed from the queue. */
-	cEvent m_evtRemoved;
+	std::condition_variable m_EventRemoved;
 
 	/** The actual generator engine used to generate chunks. */
 	cGenerator * m_Generator;

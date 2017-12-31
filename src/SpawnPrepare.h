@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "OSSupport/Latch.h"
+
 class cWorld;
 
 
@@ -33,7 +35,7 @@ protected:
 	std::atomic<int> m_NumPrepared;
 
 	/** Event used to signal that the preparation is finished. */
-	cEvent m_EvtFinished;
+	cLatch m_EvtFinished;
 
 	/** The timestamp of the last progress report emitted. */
 	std::chrono::steady_clock::time_point m_LastReportTime;

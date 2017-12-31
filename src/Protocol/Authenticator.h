@@ -67,9 +67,9 @@ private:
 
 	typedef std::deque<cUser> cUserList;
 
-	cCriticalSection m_CS;
-	cUserList        m_Queue;
-	cEvent           m_QueueNonempty;
+	std::mutex              m_CS;
+	cUserList               m_Queue;
+	std::condition_variable m_QueueNonempty;
 
 	/** The server that is to be contacted for auth / UUID conversions */
 	AString m_Server;
