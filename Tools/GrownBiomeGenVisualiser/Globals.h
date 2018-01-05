@@ -123,7 +123,6 @@ typedef unsigned char Byte;
 	#include <arpa/inet.h>
 	#include <netdb.h>
 	#include <dirent.h>
-	#include <iostream>
 	#include <unistd.h>
 
 	#include <cstring>
@@ -159,7 +158,6 @@ typedef unsigned char Byte;
 #include <cassert>
 #include <cstdio>
 #include <cmath>
-#include <cstdarg>
 #include <ctime>
 
 

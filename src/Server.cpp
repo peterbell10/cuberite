@@ -20,10 +20,6 @@
 
 #include "IniFile.h"
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
-
 extern "C"
 {
 	#include "zlib/zlib.h"
@@ -195,10 +191,7 @@ bool cServer::InitServer(cSettingsRepositoryInterface & a_Settings, bool a_Shoul
 		auto & rand = GetRandomProvider();
 		unsigned int r1 = rand.RandInt<unsigned int>(1000000000U, 0x7fffffffU);
 		unsigned int r2 = rand.RandInt<unsigned int>(1000000000U, 0x7fffffffU);
-		std::ostringstream sid;
-		sid << std::hex << r1;
-		sid << std::hex << r2;
-		m_ServerID = sid.str();
+		m_ServerID = fmt::format("{0:x}{1:x}", r1, r2);
 		m_ServerID.resize(16, '0');
 	}
 

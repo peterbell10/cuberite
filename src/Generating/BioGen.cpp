@@ -5,7 +5,6 @@
 
 #include "Globals.h"
 #include "BioGen.h"
-#include <iostream>
 #include "IntGen.h"
 #include "ProtIntGen.h"
 #include "../IniFile.h"
@@ -1223,11 +1222,11 @@ class cBioGenPerfTest
 public:
 	cBioGenPerfTest()
 	{
-		std::cout << "BioGen performance tests commencing, please wait..." << std::endl;
+		fmt::print("BioGen performance tests commencing, please wait...\n");
 		TestGen("MultiStepMap", std::make_unique<cBioGenMultiStepMap>(1).get());
 		TestGen("Grown",        std::make_unique<cBioGenGrown>(1).get());
 		TestGen("GrownProt",    std::make_unique<cBioGenProtGrown>(1).get());
-		std::cout << "BioGen performance tests complete." << std::endl;
+		fmt::print("BioGen performance tests complete.\n");
 	}
 
 protected:
@@ -1250,7 +1249,7 @@ protected:
 		auto dur = std::chrono::system_clock::now() - start;
 		double milliseconds = static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(dur)).count());
 
-		std::cout << a_GenName << ": " << 1000.0 * 100.0 * 100.0 / milliseconds << " chunks per second" << std::endl;
+		fmt::print("{0}: {1} chunks per second\n",  a_GenName, 1000.0 * 100.0 * 100.0 / milliseconds);
 	}
 } g_BioGenPerfTest;
 

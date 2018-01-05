@@ -3,8 +3,6 @@
 
 #include "ManualBindings.h"
 #undef TOLUA_TEMPLATE_BIND
-#include <sstream>
-#include <iomanip>
 #include "tolua++/include/tolua++.h"
 #include "mbedtls/md5.h"
 #include "mbedtls/sha1.h"
@@ -1863,13 +1861,12 @@ static int tolua_md5HexString(lua_State * tolua_S)
 	mbedtls_md5(SourceString, len, md5Output);
 
 	// Convert the md5 checksum to hex string:
-	std::stringstream Output;
-	Output << std::hex << std::setfill('0');
-	for (size_t i = 0; i < ARRAYCOUNT(md5Output); i++)
+	fmt::MemoryWriter Output;
+	for (auto Byte : md5Output)
 	{
-		Output << std::setw(2) << static_cast<unsigned short>(md5Output[i]);  // Need to cast to a number, otherwise a char is output
+		Output.write("{0:02x}", Byte);
 	}
-	lua_pushlstring(tolua_S, Output.str().c_str(), Output.str().size());
+	lua_pushlstring(tolua_S, Output.data(), Output.size());
 	return 1;
 }
 
@@ -1909,13 +1906,12 @@ static int tolua_sha1HexString(lua_State * tolua_S)
 	mbedtls_sha1(SourceString, len, sha1Output);
 
 	// Convert the sha1 checksum to hex string:
-	std::stringstream Output;
-	Output << std::hex << std::setfill('0');
-	for (size_t i = 0; i < ARRAYCOUNT(sha1Output); i++)
+	fmt::MemoryWriter Output;
+	for (auto Byte : sha1Output)
 	{
-		Output << std::setw(2) << static_cast<unsigned short>(sha1Output[i]);  // Need to cast to a number, otherwise a char is output
+		Output.write("{0:02x}", Byte);
 	}
-	lua_pushlstring(tolua_S, Output.str().c_str(), Output.str().size());
+	lua_pushlstring(tolua_S, Output.data(), Output.size());
 	return 1;
 }
 

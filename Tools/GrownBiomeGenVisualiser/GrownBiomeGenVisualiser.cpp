@@ -4,7 +4,6 @@
 // Implements the main app entrypoint
 
 #include "Globals.h"
-#include <iostream>
 #include <fstream>
 #include <random>
 #define PROT_INT_BUFFER_SIZE (130 * 130)

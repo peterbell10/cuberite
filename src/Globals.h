@@ -182,7 +182,6 @@ template class SizeChecker<UInt8,  1>;
 	#include <time.h>
 	#include <dirent.h>
 	#include <errno.h>
-	#include <iostream>
 	#include <cstring>
 	#include <pthread.h>
 	#include <semaphore.h>
@@ -205,7 +204,6 @@ template class SizeChecker<UInt8,  1>;
 #include <cassert>
 #include <cstdio>
 #include <cmath>
-#include <cstdarg>
 
 
 

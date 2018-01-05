@@ -117,7 +117,6 @@ typedef unsigned char Byte;
 	#include <time.h>
 	#include <dirent.h>
 	#include <errno.h>
-	#include <iostream>
 	#include <unistd.h>
 
 	#include <cstdio>
@@ -154,7 +153,6 @@ typedef unsigned char Byte;
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
-#include <stdarg.h>
 #include <time.h>
 
 
