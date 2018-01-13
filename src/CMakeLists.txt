@@ -18,7 +18,6 @@ SET (SRCS
 	BlockID.cpp
 	BlockInfo.cpp
 	BrewingRecipes.cpp
-	Broadcaster.cpp
 	BoundingBox.cpp
 	ByteBuffer.cpp
 	ChatColor.cpp
