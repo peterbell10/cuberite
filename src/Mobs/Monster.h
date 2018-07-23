@@ -288,7 +288,7 @@ protected:
 	AString m_SoundHurt;
 	AString m_SoundDeath;
 
-	int m_SightDistance; // mobTodo what to do with this?
+	int m_SightDistance;  // mobTodo what to do with this?
 
 	float m_DropChanceWeapon;
 	float m_DropChanceHelmet;
@@ -336,7 +336,7 @@ private:
 	cMobPointer m_LookingAt;
 
 	/** Leash calculations inside Tick function */
-	void CalcLeashActions();
+	void CalcLeashActions(std::chrono::milliseconds a_Dt);
 
 	std::vector<cBehavior*> m_AttachedPreTickBehaviors;
 	std::vector<cBehavior*> m_AttachedTickBehaviors;

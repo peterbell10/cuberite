@@ -17,8 +17,7 @@
 
 
 
-class cPickupCombiningCallback :
-	public cEntityCallback
+class cPickupCombiningCallback
 {
 public:
 	cPickupCombiningCallback(Vector3d a_Position, cPickup * a_Pickup) :
@@ -28,21 +27,21 @@ public:
 	{
 	}
 
-	virtual bool Item(cEntity * a_Entity) override
+	bool operator () (cEntity & a_Entity)
 	{
-		ASSERT(a_Entity->IsTicking());
-		if (!a_Entity->IsPickup() || (a_Entity->GetUniqueID() <= m_Pickup->GetUniqueID()) || !a_Entity->IsOnGround())
+		ASSERT(a_Entity.IsTicking());
+		if (!a_Entity.IsPickup() || (a_Entity.GetUniqueID() <= m_Pickup->GetUniqueID()) || !a_Entity.IsOnGround())
 		{
 			return false;
 		}
 
 
-		Vector3d EntityPos = a_Entity->GetPosition();
+		Vector3d EntityPos = a_Entity.GetPosition();
 		double Distance = (EntityPos - m_Position).Length();
 
-		cPickup * OtherPickup = static_cast<cPickup *>(a_Entity);
-		cItem & Item = OtherPickup->GetItem();
-		if ((Distance < 1.2) && Item.IsEqual(m_Pickup->GetItem()) && OtherPickup->CanCombine())
+		auto & OtherPickup = static_cast<cPickup &>(a_Entity);
+		cItem & Item = OtherPickup.GetItem();
+		if ((Distance < 1.2) && Item.IsEqual(m_Pickup->GetItem()) && OtherPickup.CanCombine())
 		{
 			short CombineCount = Item.m_ItemCount;
 			if ((CombineCount + m_Pickup->GetItem().m_ItemCount) > Item.GetMaxStackSize())
@@ -64,16 +63,16 @@ public:
 				int DiffX = FloorC(m_Pickup->GetPosX() * 32.0) - FloorC(EntityPos.x * 32.0);
 				int DiffY = FloorC(m_Pickup->GetPosY() * 32.0) - FloorC(EntityPos.y * 32.0);
 				int DiffZ = FloorC(m_Pickup->GetPosZ() * 32.0) - FloorC(EntityPos.z * 32.0);
-				a_Entity->GetWorld()->BroadcastEntityRelMove(*a_Entity, static_cast<char>(DiffX), static_cast<char>(DiffY), static_cast<char>(DiffZ));
+				a_Entity.GetWorld()->BroadcastEntityRelMove(a_Entity, static_cast<char>(DiffX), static_cast<char>(DiffY), static_cast<char>(DiffZ));
 				/* End of experimental animation */
-				a_Entity->Destroy();
+				a_Entity.Destroy();
 
 				// Reset the timer
 				m_Pickup->SetAge(0);
 			}
 			else
 			{
-				a_Entity->GetWorld()->BroadcastEntityMetadata(*a_Entity);
+				a_Entity.GetWorld()->BroadcastEntityMetadata(a_Entity);
 			}
 			m_FoundMatchingPickup = true;
 		}
@@ -148,17 +147,8 @@ void cPickup::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 			// Position might have changed due to physics. So we have to make sure we have the correct chunk.
 			GET_AND_VERIFY_CURRENT_CHUNK(CurrentChunk, BlockX, BlockZ)
 
-			int RelBlockX = BlockX - (CurrentChunk->GetPosX() * cChunkDef::Width);
-			int RelBlockZ = BlockZ - (CurrentChunk->GetPosZ() * cChunkDef::Width);
-
-			// If the pickup is on the bottommost block position, make it think the void is made of air: (#131)
-			BLOCKTYPE BlockBelow = (BlockY > 0) ? CurrentChunk->GetBlock(RelBlockX, BlockY - 1, RelBlockZ) : E_BLOCK_AIR;
-			BLOCKTYPE BlockIn = CurrentChunk->GetBlock(RelBlockX, BlockY, RelBlockZ);
-
-			if (
-				IsBlockLava(BlockBelow) || (BlockBelow == E_BLOCK_FIRE) ||
-				IsBlockLava(BlockIn) || (BlockIn == E_BLOCK_FIRE)
-			)
+			// Destroy the pickup if it is on fire:
+			if (IsOnFire())
 			{
 				m_bCollected = true;
 				m_Timer = std::chrono::milliseconds(0);  // We have to reset the timer.
@@ -199,6 +189,21 @@ void cPickup::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 		Destroy(true);
 		return;
 	}
+}
+
+
+
+
+
+bool cPickup::DoTakeDamage(TakeDamageInfo & a_TDI)
+{
+	if (a_TDI.DamageType == dtCactusContact)
+	{
+		Destroy(true);
+		return true;
+	}
+
+	return super::DoTakeDamage(a_TDI);
 }
 
 
@@ -249,7 +254,7 @@ bool cPickup::CollectedBy(cPlayer & a_Dest)
 		m_World->BroadcastCollectEntity(*this, a_Dest, NumAdded);
 
 		// Also send the "pop" sound effect with a somewhat random pitch (fast-random using EntityID ;)
-		m_World->BroadcastSoundEffect("entity.item.pickup", GetPosX(), GetPosY(), GetPosZ(), 0.5, (0.75f + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
+		m_World->BroadcastSoundEffect("entity.item.pickup", GetPosition(), 0.5, (0.75f + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
 		if (m_Item.m_ItemCount <= 0)
 		{
 			// All of the pickup has been collected, schedule the pickup for destroying
@@ -262,7 +267,3 @@ bool cPickup::CollectedBy(cPlayer & a_Dest)
 	// LOG("Pickup %d cannot be collected by \"%s\", because there's no space in the inventory.", a_Dest->GetName().c_str(), m_UniqueID);
 	return false;
 }
-
-
-
-

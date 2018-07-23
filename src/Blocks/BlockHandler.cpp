@@ -20,6 +20,7 @@
 #include "BlockCocoaPod.h"
 #include "BlockCommandBlock.h"
 #include "BlockComparator.h"
+#include "BlockConcretePowder.h"
 #include "BlockCrops.h"
 #include "BlockDeadBush.h"
 #include "BlockDirt.h"
@@ -210,6 +211,7 @@ cBlockHandler * cBlockHandler::CreateBlockHandler(BLOCKTYPE a_BlockType)
 		case E_BLOCK_COCOA_POD:                     return new cBlockCocoaPodHandler        (a_BlockType);
 		case E_BLOCK_COMMAND_BLOCK:                 return new cBlockCommandBlockHandler    (a_BlockType);
 		case E_BLOCK_ACTIVE_COMPARATOR:             return new cBlockComparatorHandler      (a_BlockType);
+		case E_BLOCK_CONCRETE_POWDER:               return new cBlockConcretePowderHandler  (a_BlockType);
 		case E_BLOCK_COBBLESTONE:                   return new cBlockStoneHandler           (a_BlockType);
 		case E_BLOCK_COBBLESTONE_STAIRS:            return new cBlockStairsHandler          (a_BlockType);
 		case E_BLOCK_COBWEB:                        return new cBlockCobWebHandler          (a_BlockType);
@@ -441,7 +443,7 @@ void cBlockHandler::NeighborChanged(cChunkInterface & a_ChunkInterface, int a_Ne
 {
 	if ((a_NeighborY >= 0) && (a_NeighborY < cChunkDef::Height))
 	{
-		cBlockInfo::GetHandler(a_ChunkInterface.GetBlock(a_NeighborX, a_NeighborY, a_NeighborZ))->OnNeighborChanged(a_ChunkInterface, a_NeighborX, a_NeighborY, a_NeighborZ, a_WhichNeighbor);
+		cBlockInfo::GetHandler(a_ChunkInterface.GetBlock({a_NeighborX, a_NeighborY, a_NeighborZ}))->OnNeighborChanged(a_ChunkInterface, a_NeighborX, a_NeighborY, a_NeighborZ, a_WhichNeighbor);
 	}
 }
 
@@ -462,7 +464,7 @@ void cBlockHandler::ConvertToPickups(cItems & a_Pickups, NIBBLETYPE a_BlockMeta)
 void cBlockHandler::DropBlock(cChunkInterface & a_ChunkInterface, cWorldInterface & a_WorldInterface, cBlockPluginInterface & a_BlockPluginInterface, cEntity * a_Digger, int a_BlockX, int a_BlockY, int a_BlockZ, bool a_CanDrop)
 {
 	cItems Pickups;
-	NIBBLETYPE Meta = a_ChunkInterface.GetBlockMeta(a_BlockX, a_BlockY, a_BlockZ);
+	NIBBLETYPE Meta = a_ChunkInterface.GetBlockMeta({a_BlockX, a_BlockY, a_BlockZ});
 
 	if (a_CanDrop)
 	{
@@ -529,6 +531,12 @@ void cBlockHandler::DropBlock(cChunkInterface & a_ChunkInterface, cWorldInterfac
 				{
 					// Reset meta to 0
 					Pickups.Add(m_BlockType, 1, 0);
+					break;
+				}
+				case E_BLOCK_LEAVES:
+				case E_BLOCK_NEW_LEAVES:
+				{
+					Pickups.Add(m_BlockType, 1, Meta & 0x03);
 					break;
 				}
 				default: Pickups.Add(m_BlockType, 1, Meta); break;
@@ -615,7 +623,7 @@ bool cBlockHandler::DoesDropOnUnsuitable(void)
 
 
 /* default functionality: only test for height, since we assume full voxels with varying height */
-bool cBlockHandler::IsInsideBlock(const Vector3d & a_Position, const BLOCKTYPE a_BlockType, const NIBBLETYPE a_BlockMeta)
+bool cBlockHandler::IsInsideBlock(Vector3d a_Position, const BLOCKTYPE a_BlockType, const NIBBLETYPE a_BlockMeta)
 {
 	return a_Position.y < cBlockInfo::GetBlockHeight(a_BlockType);
 }

@@ -81,7 +81,8 @@ public:
 	returns true if the use was successful, return false to use the block as a "normal" block */
 	virtual bool OnUse(cChunkInterface & a_ChunkInterface, cWorldInterface & a_WorldInterface, cPlayer & a_Player, int a_BlockX, int a_BlockY, int a_BlockZ, eBlockFace a_BlockFace, int a_CursorX, int a_CursorY, int a_CursorZ) { return false; }
 
-	/** Called when a right click to this block is cancelled */
+	/** Called when a right click to this block is cancelled.
+	It forces the server to send the real state of a block to the client to prevent client assuming the operation is successfull */
 	virtual void OnCancelRightClick(cChunkInterface & a_ChunkInterface, cWorldInterface & a_WorldInterface, cPlayer & a_Player, int a_BlockX, int a_BlockY, int a_BlockZ, eBlockFace a_BlockFace) {}
 
 	/** Called when the item is mined to convert it into pickups. Pickups may specify multiple items. Appends items to a_Pickups, preserves its original contents */
@@ -133,7 +134,7 @@ public:
 
 	/** Tests if a_Position is inside the block where a_Position is relative to the origin of the block
 	Note that this is considered from a "top-down" perspective i.e. empty spaces on the bottom of a block don't matter */
-	virtual bool IsInsideBlock(const Vector3d & a_Position, const BLOCKTYPE a_BlockType, const NIBBLETYPE a_BlockMeta);
+	virtual bool IsInsideBlock(Vector3d a_Position, const BLOCKTYPE a_BlockType, const NIBBLETYPE a_BlockMeta);
 
 	/** Called when one of the neighbors gets set; equivalent to MC block update.
 	By default drops if position no more suitable (CanBeAt(), DoesDropOnUnsuitable(), Drop()),

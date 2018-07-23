@@ -43,6 +43,11 @@ cSheep::cSheep(int a_Color) :
 
 void cSheep::GetDrops(cItems & a_Drops, cEntity * a_Killer)
 {
+	if (IsBaby())
+	{
+		return;  // Babies don't drop items
+	}
+
 	if (!m_IsSheared)
 	{
 		a_Drops.push_back(cItem(E_BLOCK_WOOL, 1, static_cast<short>(m_WoolColor)));
@@ -75,7 +80,7 @@ void cSheep::OnRightClicked(cPlayer & a_Player)
 		char NumDrops = GetRandomProvider().RandInt<char>(1, 3);
 		Drops.emplace_back(E_BLOCK_WOOL, NumDrops, static_cast<short>(m_WoolColor));
 		m_World->SpawnItemPickups(Drops, GetPosX(), GetPosY(), GetPosZ(), 10);
-		m_World->BroadcastSoundEffect("entity.sheep.shear", GetPosX(), GetPosY(), GetPosZ(), 1.0f, 1.0f);
+		m_World->BroadcastSoundEffect("entity.sheep.shear", GetPosition(), 1.0f, 1.0f);
 	}
 	else if ((EquippedItem.m_ItemType == E_ITEM_DYE) && (m_WoolColor != 15 - EquippedItem.m_ItemDamage))
 	{

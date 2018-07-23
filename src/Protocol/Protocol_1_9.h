@@ -83,6 +83,7 @@ public:
 	virtual void SendExplosion                  (double a_BlockX, double a_BlockY, double a_BlockZ, float a_Radius, const cVector3iArray & a_BlocksAffected, const Vector3d & a_PlayerMotion) override;
 	virtual void SendGameMode                   (eGameMode a_GameMode) override;
 	virtual void SendHealth                     (void) override;
+	virtual void SendHeldItemChange             (int a_ItemIndex) override;
 	virtual void SendHideTitle                  (void) override;
 	virtual void SendInventorySlot              (char a_WindowID, short a_SlotNum, const cItem & a_Item) override;
 	virtual void SendKeepAlive                  (UInt32 a_PingID) override;
@@ -254,6 +255,10 @@ protected:
 	/** Converts the BlockFace received by the protocol into eBlockFace constants.
 	If the received value doesn't match any of our eBlockFace constants, BLOCK_FACE_NONE is returned. */
 	eBlockFace FaceIntToBlockFace(Int32 a_FaceInt);
+
+	/** Converts the hand parameter received by the protocol into eHand constants.
+	If the received value doesn't match any of the know value, raise an assertion fail or return hMain. */
+	eHand HandIntToEnum(Int32 a_Hand);
 
 	/** Writes the item data into a packet. */
 	void WriteItem(cPacketizer & a_Pkt, const cItem & a_Item);

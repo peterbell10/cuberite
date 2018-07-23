@@ -56,7 +56,7 @@ bool cHopperEntity::GetOutputBlockPos(NIBBLETYPE a_BlockMeta, int & a_OutputX, i
 void cHopperEntity::CopyFrom(const cBlockEntity & a_Src)
 {
 	Super::CopyFrom(a_Src);
-	auto & src = reinterpret_cast<const cHopperEntity &>(a_Src);
+	auto & src = static_cast<const cHopperEntity &>(a_Src);
 	m_LastMoveItemsInTick = src.m_LastMoveItemsInTick;
 	m_LastMoveItemsOutTick = src.m_LastMoveItemsOutTick;
 }
@@ -116,9 +116,8 @@ bool cHopperEntity::UsedBy(cPlayer * a_Player)
 	// Instead of marking the chunk as dirty upon chest contents change, we mark it dirty now
 	// We cannot properly detect contents change, but such a change doesn't happen without a player opening the chest first.
 	// The few false positives aren't much to worry about
-	int ChunkX, ChunkZ;
-	cChunkDef::BlockToChunk(m_PosX, m_PosZ, ChunkX, ChunkZ);
-	m_World->MarkChunkDirty(ChunkX, ChunkZ);
+	cChunkCoords ChunkPos = cChunkDef::BlockToChunk(GetPos());
+	m_World->MarkChunkDirty(ChunkPos.m_ChunkX, ChunkPos.m_ChunkZ);
 	return true;
 }
 
@@ -193,33 +192,30 @@ bool cHopperEntity::MovePickupsIn(cChunk & a_Chunk, Int64 a_CurrentTick)
 {
 	UNUSED(a_CurrentTick);
 
-	class cHopperPickupSearchCallback :
-		public cEntityCallback
+	class cHopperPickupSearchCallback
 	{
 	public:
-		cHopperPickupSearchCallback(const Vector3i & a_Pos, cItemGrid & a_Contents) :
+		cHopperPickupSearchCallback(Vector3i a_Pos, cItemGrid & a_Contents) :
 			m_Pos(a_Pos),
 			m_bFoundPickupsAbove(false),
 			m_Contents(a_Contents)
 		{
 		}
 
-		virtual bool Item(cEntity * a_Entity) override
+		bool operator () (cEntity & a_Entity)
 		{
-			ASSERT(a_Entity != nullptr);
-
-			if (!a_Entity->IsPickup())
+			if (!a_Entity.IsPickup())
 			{
 				return false;
 			}
 
-			Vector3f EntityPos = a_Entity->GetPosition();
+			Vector3f EntityPos = a_Entity.GetPosition();
 			Vector3f BlockPos(m_Pos.x + 0.5f, static_cast<float>(m_Pos.y) + 1, m_Pos.z + 0.5f);  // One block above hopper, and search from center outwards
 			double Distance = (EntityPos - BlockPos).Length();
 
 			if (Distance < 0.5)
 			{
-				if (TrySuckPickupIn(static_cast<cPickup *>(a_Entity)))
+				if (TrySuckPickupIn(static_cast<cPickup &>(a_Entity)))
 				{
 					return false;
 				}
@@ -228,9 +224,9 @@ bool cHopperEntity::MovePickupsIn(cChunk & a_Chunk, Int64 a_CurrentTick)
 			return false;
 		}
 
-		bool TrySuckPickupIn(cPickup * a_Pickup)
+		bool TrySuckPickupIn(cPickup & a_Pickup)
 		{
-			cItem & Item = a_Pickup->GetItem();
+			cItem & Item = a_Pickup.GetItem();
 
 			for (int i = 0; i < ContentsWidth * ContentsHeight; i++)
 			{
@@ -238,7 +234,7 @@ bool cHopperEntity::MovePickupsIn(cChunk & a_Chunk, Int64 a_CurrentTick)
 				{
 					m_bFoundPickupsAbove = true;
 					m_Contents.SetSlot(i, Item);
-					a_Pickup->Destroy();  // Kill pickup
+					a_Pickup.Destroy();  // Kill pickup
 
 					return true;
 				}
@@ -252,7 +248,7 @@ bool cHopperEntity::MovePickupsIn(cChunk & a_Chunk, Int64 a_CurrentTick)
 
 					if (Item.IsEmpty())
 					{
-						a_Pickup->Destroy();  // Kill pickup if all items were added
+						a_Pickup.Destroy();  // Kill pickup if all items were added
 					}
 					return true;
 				}

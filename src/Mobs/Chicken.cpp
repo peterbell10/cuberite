@@ -25,6 +25,11 @@ cChicken::cChicken(void) :
 
 void cChicken::GetDrops(cItems & a_Drops, cEntity * a_Killer)
 {
+	if (IsBaby())
+	{
+		return;  // Babies don't drop items
+	}
+
 	unsigned int LootingLevel = 0;
 	if (a_Killer != nullptr)
 	{
@@ -38,10 +43,12 @@ void cChicken::GetDrops(cItems & a_Drops, cEntity * a_Killer)
 
 
 
-void cChicken::HandleFalling(void)
+bool cChicken::DoTakeDamage(TakeDamageInfo & a_TDI)
 {
-	// empty - chickens don't take fall damage
+	if (a_TDI.DamageType == dtFalling)
+	{
+		return false;
+	}
+
+	return super::DoTakeDamage(a_TDI);
 }
-
-
-

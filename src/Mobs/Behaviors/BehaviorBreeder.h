@@ -9,10 +9,10 @@ class cBehaviorBreeder;
 Recommended combination with cBehaviorItemFollower.
 
 Connections to other behaviors:
- - If the mob also has cBehaviorPet, this behavior is suppressed unless the mob has an owner.
+- If the mob also has cBehaviorPet, this behavior is suppressed unless the mob has an owner.
 
 Special connections:
- - Relies on the polymorphic cMonster::GetBreedingItems function to determine the breeding items.
+- Relies on the polymorphic cMonster::GetBreedingItems function to determine the breeding items.
 
 
 */
@@ -21,7 +21,7 @@ class cBehaviorBreeder : public cBehavior
 
 public:
 	cBehaviorBreeder();
-	void AttachToMonster(cMonster & a_Parent, cBehaviorPet * a_BehaviorPet = nullptr);
+	void AttachToMonster(cMonster & a_Parent, cBehaviorBrave * a_BehaviorPet = nullptr);
 
 	// Functions our host Monster should invoke:
 	bool IsControlDesired(std::chrono::milliseconds a_Dt, cChunk & a_Chunk) override;

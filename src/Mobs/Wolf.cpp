@@ -31,7 +31,8 @@ cWolf::cWolf(void) :
 
 bool cWolf::DoTakeDamage(TakeDamageInfo & a_TDI)
 {
-	/*TODO bring from master and adapt*/
+	/* TODO bring from master and adapt */
+	return super::DoTakeDamage(a_TDI);
 }
 
 
@@ -40,7 +41,7 @@ bool cWolf::DoTakeDamage(TakeDamageInfo & a_TDI)
 
 void cWolf::NotifyAlliesOfFight(cPawn * a_Opponent)
 {
-	/*TODO bring from master and adapt*/
+	/* TODO bring from master and adapt */
 }
 
 
@@ -49,9 +50,7 @@ void cWolf::NotifyAlliesOfFight(cPawn * a_Opponent)
 
 void cWolf::ReceiveNearbyFightInfo(const cUUID & a_PlayerID, cPawn * a_Opponent, bool a_IsPlayerInvolved)
 {
-	/*TODO bring from master and adapt
-	*/
-
+	/* TODO bring from master and adapt */
 }
 
 
@@ -60,8 +59,7 @@ void cWolf::ReceiveNearbyFightInfo(const cUUID & a_PlayerID, cPawn * a_Opponent,
 
 void cWolf::OnRightClicked(cPlayer & a_Player)
 {
-	/*TODO bring from master and adapt
-	*/
+	/* TODO bring from master and adapt */
 }
 
 
@@ -70,7 +68,7 @@ void cWolf::OnRightClicked(cPlayer & a_Player)
 
 void cWolf::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 {
-	//mobTodo behaviors!
+	// mobTodo behaviors!
 
 	/*
 	TODO bring from master and adapt

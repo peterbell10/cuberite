@@ -176,6 +176,7 @@ public:  // tolua_export
 	void SendExplosion                  (double a_BlockX, double a_BlockY, double a_BlockZ, float a_Radius, const cVector3iArray & a_BlocksAffected, const Vector3d & a_PlayerMotion);
 	void SendGameMode                   (eGameMode a_GameMode);
 	void SendHealth                     (void);
+	void SendHeldItemChange             (int a_ItemIndex);
 	void SendHideTitle                  (void);   // tolua_export
 	void SendInventorySlot              (char a_WindowID, short a_SlotNum, const cItem & a_Item);
 	void SendLeashEntity                (const cEntity & a_Entity, const cEntity & a_EntityLeashedTo);
@@ -205,6 +206,7 @@ public:  // tolua_export
 	void SendSetTitle                   (const cCompositeChat & a_Title);  // tolua_export
 	void SendSetRawTitle                (const AString & a_Title);  // tolua_export
 	void SendSoundEffect                (const AString & a_SoundName, double a_X, double a_Y, double a_Z, float a_Volume, float a_Pitch);  // tolua_export
+	void SendSoundEffect                (const AString & a_SoundName, Vector3d a_Position, float a_Volume, float a_Pitch);  // tolua_export
 	void SendSoundParticleEffect        (const EffectID a_EffectID, int a_SrcX, int a_SrcY, int a_SrcZ, int a_Data);
 	void SendSpawnFallingBlock          (const cFallingBlock & a_FallingBlock);
 	void SendSpawnMob                   (const cMonster & a_Mob);
@@ -337,6 +339,10 @@ public:  // tolua_export
 	the NPC UI. */
 	void HandleNPCTrade(int a_SlotNum);
 
+	/** Handles a player opening their inventory while riding a horse.
+	@param a_EntityID ID of the player that is to open the inventory. Should be the same as GetPlayer()->GetUniqueID().  */
+	void HandleOpenHorseInventory(UInt32 a_EntityID);
+
 	void HandlePing             (void);
 	void HandlePlayerAbilities  (bool a_CanFly, bool a_IsFlying, float FlyingSpeed, float WalkingSpeed);
 	void HandlePlayerLook       (float a_Rotation, float a_Pitch, bool a_IsOnGround);
@@ -351,7 +357,7 @@ public:  // tolua_export
 
 	void HandlePluginMessage    (const AString & a_Channel, const AString & a_Message);
 	void HandleRespawn          (void);
-	void HandleRightClick       (int a_BlockX, int a_BlockY, int a_BlockZ, eBlockFace a_BlockFace, int a_CursorX, int a_CursorY, int a_CursorZ, const cItem & a_HeldItem);
+	void HandleRightClick       (int a_BlockX, int a_BlockY, int a_BlockZ, eBlockFace a_BlockFace, int a_CursorX, int a_CursorY, int a_CursorZ, eHand a_Hand);
 	void HandleSlotSelected     (Int16 a_SlotNum);
 	void HandleSpectate         (const cUUID & a_PlayerUUID);
 	void HandleSteerVehicle     (float Forward, float Sideways);
@@ -363,6 +369,7 @@ public:  // tolua_export
 	);
 	void HandleUnmount          (void);
 	void HandleUseEntity        (UInt32 a_TargetEntityID, bool a_IsLeftClick);
+	void HandleUseItem          (eHand a_Hand);
 	void HandleWindowClick      (UInt8 a_WindowID, Int16 a_SlotNum, eClickAction a_ClickAction, const cItem & a_HeldItem);
 	void HandleWindowClose      (UInt8 a_WindowID);
 

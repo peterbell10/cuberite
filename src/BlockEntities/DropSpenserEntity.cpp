@@ -75,7 +75,7 @@ void cDropSpenserEntity::DropSpense(cChunk & a_Chunk)
 	if (SlotsCnt == 0)
 	{
 		// Nothing in the dropspenser, play the click sound
-		m_World->BroadcastSoundEffect("block.dispenser.fail", static_cast<double>(m_PosX), static_cast<double>(m_PosY), static_cast<double>(m_PosZ), 1.0f, 1.2f);
+		m_World->BroadcastSoundEffect("block.dispenser.fail", Vector3d(m_PosX, m_PosY, m_PosZ), 1.0f, 1.2f);
 		return;
 	}
 
@@ -97,7 +97,7 @@ void cDropSpenserEntity::DropSpense(cChunk & a_Chunk)
 		case E_META_DROPSPENSER_FACING_ZP: SmokeDir = static_cast<int>(SmokeDirection::NORTH); break;
 	}
 	m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, m_PosX, m_PosY, m_PosZ, SmokeDir);
-	m_World->BroadcastSoundEffect("block.dispenser.dispense", static_cast<double>(m_PosX), static_cast<double>(m_PosY), static_cast<double>(m_PosZ), 1.0f, 1.0f);
+	m_World->BroadcastSoundEffect("block.dispenser.dispense", Vector3d(m_PosX, m_PosY, m_PosZ), 1.0f, 1.0f);
 }
 
 
@@ -116,7 +116,7 @@ void cDropSpenserEntity::Activate(void)
 void cDropSpenserEntity::CopyFrom(const cBlockEntity & a_Src)
 {
 	Super::CopyFrom(a_Src);
-	auto & src = reinterpret_cast<const cDropSpenserEntity &>(a_Src);
+	auto & src = static_cast<const cDropSpenserEntity &>(a_Src);
 	m_Contents.CopyFrom(src.m_Contents);
 	m_ShouldDropSpense = src.m_ShouldDropSpense;
 }

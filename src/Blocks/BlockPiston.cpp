@@ -29,7 +29,7 @@ void cBlockPistonHandler::OnDestroyed(cChunkInterface & a_ChunkInterface, cWorld
 {
 	Vector3i blockPos(a_BlockX, a_BlockY, a_BlockZ);
 
-	NIBBLETYPE OldMeta = a_ChunkInterface.GetBlockMeta(blockPos.x, blockPos.y, blockPos.z);
+	NIBBLETYPE OldMeta = a_ChunkInterface.GetBlockMeta(blockPos);
 	// If the piston is extended, destroy the extension as well
 	if (IsExtended(OldMeta))
 	{
@@ -233,8 +233,8 @@ void cBlockPistonHandler::ExtendPiston(Vector3i a_BlockPos, cWorld & a_World)
 		return;
 	}
 
-	a_World.BroadcastBlockAction(a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, 0, pistonMeta, pistonBlock);
-	a_World.BroadcastSoundEffect("block.piston.extend", a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, 0.5f, 0.7f);
+	a_World.BroadcastBlockAction(a_BlockPos, 0, pistonMeta, pistonBlock);
+	a_World.BroadcastSoundEffect("block.piston.extend", a_BlockPos, 0.5f, 0.7f);
 
 	PushBlocks(blocksPushed, a_World, pushDir);
 
@@ -277,8 +277,8 @@ void cBlockPistonHandler::RetractPiston(Vector3i a_BlockPos, cWorld & a_World)
 	a_World.SetBlock(extensionPos.x, extensionPos.y, extensionPos.z, E_BLOCK_AIR, 0);
 
 	a_World.SetBlock(a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, pistonBlock, pistonMeta & ~(8));
-	a_World.BroadcastBlockAction(a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, 1, pistonMeta & ~(8), pistonBlock);
-	a_World.BroadcastSoundEffect("block.piston.contract", a_BlockPos.x, a_BlockPos.y, a_BlockPos.z, 0.5f, 0.7f);
+	a_World.BroadcastBlockAction(a_BlockPos, 1, pistonMeta & ~(8), pistonBlock);
+	a_World.BroadcastSoundEffect("block.piston.contract", a_BlockPos, 0.5f, 0.7f);
 
 	if (!IsSticky(pistonBlock))
 	{
@@ -322,7 +322,7 @@ void cBlockPistonHeadHandler::OnDestroyedByPlayer(cChunkInterface & a_ChunkInter
 	Vector3i blockPos(a_BlockX, a_BlockY, a_BlockZ);
 
 	// Get the base of the piston
-	NIBBLETYPE OldMeta = a_ChunkInterface.GetBlockMeta(blockPos.x, blockPos.y, blockPos.z);
+	NIBBLETYPE OldMeta = a_ChunkInterface.GetBlockMeta(blockPos);
 	blockPos -= cBlockPistonHandler::MetadataToOffset(OldMeta);
 
 	BLOCKTYPE Block = a_ChunkInterface.GetBlock(blockPos);

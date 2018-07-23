@@ -19,7 +19,7 @@ cBehaviorBreeder::cBehaviorBreeder() :
 
 
 
-void cBehaviorBreeder::AttachToMonster(cMonster & a_Parent)
+void cBehaviorBreeder::AttachToMonster(cMonster & a_Parent, cBehaviorBrave *)
 {
 	m_Parent = &a_Parent;
 	m_Parent->AttachTickBehavior(this);
@@ -54,26 +54,19 @@ void cBehaviorBreeder::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 			Vector3f Pos = (m_Parent->GetPosition() + m_LovePartner->GetPosition()) * 0.5;
 			UInt32 BabyID = World->SpawnMob(Pos.x, Pos.y, Pos.z, m_Parent->GetMobType(), true);
 
-			class cBabyInheritCallback :
-				public cEntityCallback
-			{
-			public:
-				cMonster * Baby;
-				cBabyInheritCallback() : Baby(nullptr) { }
-				virtual bool Item(cEntity * a_Entity) override
+			m_Parent->GetWorld()->DoWithEntityByID(BabyID, [&](cEntity & a_Baby)
 				{
-					Baby = static_cast<cMonster *>(a_Entity);
+					if (!a_Baby.IsMob())
+					{
+						return false;
+					}
+
+					static_cast<cMonster &>(a_Baby).InheritFromParents(m_Parent, m_LovePartner);
 					return true;
 				}
-			} Callback;
+			);
 
-			m_Parent->GetWorld()->DoWithEntityByID(BabyID, Callback);
-			if (Callback.Baby != nullptr)
-			{
-				Callback.Baby->InheritFromParents(m_Parent, m_LovePartner);
-			}
-
-			cFastRandom Random;
+			auto & Random = GetRandomProvider();
 			World->SpawnExperienceOrb(Pos.x, Pos.y, Pos.z, 1 + (Random.RandInt() % 6));
 
 			m_LovePartner->GetBehaviorBreeder()->ResetLoveMode();
@@ -123,34 +116,25 @@ bool cBehaviorBreeder::IsControlDesired(std::chrono::milliseconds a_Dt, cChunk &
 	// If we are in love mode and we have no partner, try to find one
 	if (m_LoveTimer > 0)
 	{
-		class LookForLover : public cEntityCallback
-		{
-		public:
-			cMonster * m_Me;
-			LookForLover(cMonster * a_Me) :
-				m_Me(a_Me)
-			{
-			}
-
-			virtual bool Item(cEntity * a_Entity) override
+		World->ForEachEntityInBox(cBoundingBox(m_Parent->GetPosition(), 8, 8), [&](cEntity & a_Entity)
 			{
 				// If the entity is not a monster, don't breed with it
 				// Also, do not self-breed
-				if ((a_Entity->GetEntityType() != cEntity::eEntityType::etMonster) || (a_Entity == m_Me))
+				if ((a_Entity.GetEntityType() != cEntity::eEntityType::etMonster) || (&a_Entity == m_Parent))
 				{
 					return false;
 				}
 
-				auto PotentialPartner = static_cast<cMonster*>(a_Entity);
+				auto PotentialPartner = static_cast<cMonster *>(&a_Entity);
 
 				// If the potential partner is not of the same species, don't breed with it
-				if (PotentialPartner->GetMobType() != m_Me->GetMobType())
+				if (PotentialPartner->GetMobType() != m_Parent->GetMobType())
 				{
 					return false;
 				}
 
 				auto PartnerBreedingBehavior = PotentialPartner->GetBehaviorBreeder();
-				auto MyBreedingBehavior = m_Me->GetBehaviorBreeder();
+				auto MyBreedingBehavior = m_Parent->GetBehaviorBreeder();
 
 				// If the potential partner is not in love
 				// Or they already have a mate, do not breed with them
@@ -161,13 +145,13 @@ bool cBehaviorBreeder::IsControlDesired(std::chrono::milliseconds a_Dt, cChunk &
 				}
 
 				// All conditions met, let's breed!
-				PartnerBreedingBehavior->EngageLoveMode(m_Me);
+				PartnerBreedingBehavior->EngageLoveMode(m_Parent);
 				MyBreedingBehavior->EngageLoveMode(PotentialPartner);
 				return true;
 			}
-		} Callback(m_Parent);
+		);
 
-		World->ForEachEntityInBox(cBoundingBox(m_Parent->GetPosition(), 8, 8), Callback);
+
 		if (m_LovePartner != nullptr)
 		{
 			return true;  // We found love and took control of the monster, prevent other Behaviors from doing so
@@ -250,116 +234,3 @@ bool cBehaviorBreeder::IsInLoveCooldown() const
 {
 	return (m_LoveCooldown > 0);
 }
-
-
-
-
-/*** CODE TO BE USED AFTER the lambda merge
- * bool cBehaviorBreeder::IsControlDesired(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
-{
-	UNUSED(a_Dt);
-	UNUSED(a_Chunk);
-	cWorld * World = m_Parent->GetWorld();
-
-	// if we have a love partner, we should control the mob
-	if (m_LovePartner != nullptr)
-	{
-		return true;
-	}
-
-	// If we are in love mode and we have no partner, try to find one
-	if (m_LoveTimer > 0)
-	{
-		m_Parent->GetWorld()->ForEachEntityInBox(cBoundingBox(m_Parent->GetPosition(), 8, 8), [=](cEntity & a_Entity)
-		{
-			// If the entity is not a monster, don't breed with it
-			// Also, do not self-breed
-			if ((a_Entity.GetEntityType() != cEntity::eEntityType::etMonster) || (&a_Entity == m_Parent))
-			{
-				return false;
-			}
-
-			auto PotentialPartner = static_cast<cMonster*>(&a_Entity);
-
-			// If the potential partner is not of the same species, don't breed with it
-			if (PotentialPartner->GetMobType() != m_Parent->GetMobType())
-			{
-				return false;
-			}
-
-			auto PartnerBreedingBehavior = PotentialPartner->GetBehaviorBreeder();
-			auto MyBreedingBehavior = m_Parent->GetBehaviorBreeder();
-
-			// If the potential partner is not in love
-			// Or they already have a mate, do not breed with them
-
-			if ((!PartnerBreedingBehavior->IsInLove()) || (PartnerBreedingBehavior->GetPartner() != nullptr))
-			{
-				return false;
-			}
-
-			// All conditions met, let's breed!
-			PartnerBreedingBehavior->EngageLoveMode(m_Parent);
-			MyBreedingBehavior->EngageLoveMode(PotentialPartner);
-			return true;
-		});
-
-
-		if (m_LovePartner != nullptr)
-		{
-			return true;  // We found love and took control of the monster, prevent other Behaviors from doing so
-		}
-	}
-
-	return false;
-} **/
-
-
-
-
-
-
-/*
- * CODE to be used AFTER the lambda merge
- * void cBehaviorBreeder::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
-{
-	LOGD("mobDebug - Behavior Breeder: Tick");
-	UNUSED(a_Dt);
-	UNUSED(a_Chunk);
-	cWorld * World = m_Parent->GetWorld();
-	// if we have a partner, mate
-	if (m_LovePartner != nullptr)
-	{
-		if (m_MatingTimer > 0)
-		{
-			// If we should still mate, keep bumping into them until baby is made
-			Vector3d Pos = m_LovePartner->GetPosition();
-			m_Parent->MoveToPosition(Pos);
-		}
-		else
-		{
-			// Mating finished. Spawn baby
-			Vector3f Pos = (m_Parent->GetPosition() + m_LovePartner->GetPosition()) * 0.5;
-			UInt32 BabyID = World->SpawnMob(Pos.x, Pos.y, Pos.z, m_Parent->GetMobType(), true);
-
-			cMonster * Baby = nullptr;
-
-			m_Parent->GetWorld()->DoWithEntityByID(BabyID, [&](cEntity & a_Entity)
-			{
-				Baby = static_cast<cMonster *>(&a_Entity);
-				return true;
-			});
-
-			if (Baby != nullptr)
-			{
-				Baby->InheritFromParents(m_Parent, m_LovePartner);
-			}
-
-			cFastRandom Random;
-			World->SpawnExperienceOrb(Pos.x, Pos.y, Pos.z, 1 + (Random.RandInt() % 6));
-
-			m_LovePartner->GetBehaviorBreeder()->ResetLoveMode();
-			ResetLoveMode();
-		}
-	}
-}*/

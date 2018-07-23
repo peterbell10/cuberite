@@ -5,6 +5,7 @@
 #include "Protocol/MojangAPI.h"
 #include "HTTP/HTTPServer.h"
 #include "Defines.h"
+#include "FunctionRef.h"
 #include "RankManager.h"
 
 
@@ -27,8 +28,8 @@ class cSettingsRepositoryInterface;
 class cDeadlockDetect;
 class cUUID;
 
-typedef cItemCallback<cPlayer> cPlayerListCallback;
-typedef cItemCallback<cWorld>  cWorldListCallback;
+using cPlayerListCallback =  cFunctionRef<bool(cPlayer &)>;
+using cWorldListCallback  =  cFunctionRef<bool(cWorld  &)>;
 
 namespace Json
 {
@@ -76,7 +77,7 @@ public:
 	// tolua_end
 
 	/** Calls the callback for each world; returns true if the callback didn't abort (return true) */
-	bool ForEachWorld(cWorldListCallback & a_Callback);  // >> Exported in ManualBindings <<
+	bool ForEachWorld(cWorldListCallback a_Callback);  // >> Exported in ManualBindings <<
 
 	/** Writes chunkstats, for each world and totals, to the output callback */
 	void LogChunkStats(cCommandOutputCallback & a_Output);
@@ -139,22 +140,25 @@ public:
 	void SetSavingEnabled(bool a_SavingEnabled);  // tolua_export
 
 	/** Calls the callback for each player in all worlds */
-	bool ForEachPlayer(cPlayerListCallback & a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
+	bool ForEachPlayer(cPlayerListCallback a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
 
 	/** Finds a player from a partial or complete player name and calls the callback - case-insensitive */
-	bool FindAndDoWithPlayer(const AString & a_PlayerName, cPlayerListCallback & a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
+	bool FindAndDoWithPlayer(const AString & a_PlayerName, cPlayerListCallback a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
 
 	/** Finds the player over his uuid and calls the callback */
-	bool DoWithPlayerByUUID(const cUUID & a_PlayerUUID, cPlayerListCallback & a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
+	bool DoWithPlayerByUUID(const cUUID & a_PlayerUUID, cPlayerListCallback a_Callback);  // >> EXPORTED IN MANUALBINDINGS <<
 
 	/** Finds the player using it's complete username and calls the callback */
-	bool DoWithPlayer(const AString & a_PlayerName, cPlayerListCallback & a_Callback);
+	bool DoWithPlayer(const AString & a_PlayerName, cPlayerListCallback a_Callback);
 
 	/** Send playerlist of all worlds to player */
 	void SendPlayerLists(cPlayer * a_DestPlayer);
 
-	/** Broadcast Player through all worlds */
+	/** Broadcast playerlist addition through all worlds */
 	void BroadcastPlayerListsAddPlayer(const cPlayer & a_Player, const cClientHandle * a_Exclude = nullptr);
+
+	/** Broadcast playerlist removal through all worlds */
+	void BroadcastPlayerListsRemovePlayer(const cPlayer & a_Player, const cClientHandle * a_Exclude = nullptr);
 
 	// tolua_begin
 
@@ -227,7 +231,7 @@ private:
 	void LoadGlobalSettings();
 
 	/** Loads the worlds from settings.ini, creates the worldmap */
-	void LoadWorlds(cSettingsRepositoryInterface & a_Settings, bool a_IsNewIniFile);
+	void LoadWorlds(cDeadlockDetect & a_dd, cSettingsRepositoryInterface & a_Settings, bool a_IsNewIniFile);
 
 	/** Starts each world's life */
 	void StartWorlds(cDeadlockDetect & a_DeadlockDetect);

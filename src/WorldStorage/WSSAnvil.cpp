@@ -85,7 +85,7 @@ cWSSAnvil::cWSSAnvil(cWorld * a_World, int a_CompressionFactor) :
 {
 	// Create a level.dat file for mapping tools, if it doesn't already exist:
 	AString fnam;
-	Printf(fnam, "%s%clevel.dat", a_World->GetDataPath().c_str(), cFile::PathSeparator);
+	Printf(fnam, "%s%clevel.dat", a_World->GetDataPath().c_str(), cFile::PathSeparator());
 	if (!cFile::Exists(fnam))
 	{
 		cFastNBTWriter Writer;
@@ -180,7 +180,7 @@ void cWSSAnvil::ChunkLoadFailed(int a_ChunkX, int a_ChunkZ, const AString & a_Re
 {
 	// Construct the filename for offloading:
 	AString OffloadFileName;
-	Printf(OffloadFileName, "%s%cregion%cbadchunks", m_World->GetDataPath().c_str(), cFile::PathSeparator, cFile::PathSeparator);
+	Printf(OffloadFileName, "%s%cregion%cbadchunks", m_World->GetDataPath().c_str(), cFile::PathSeparator(), cFile::PathSeparator());
 	cFile::CreateFolder(FILE_IO_PREFIX + OffloadFileName);
 	auto t = time(nullptr);
 	struct tm stm;
@@ -190,7 +190,7 @@ void cWSSAnvil::ChunkLoadFailed(int a_ChunkX, int a_ChunkZ, const AString & a_Re
 		localtime_r(&t, &stm);
 	#endif
 	AppendPrintf(OffloadFileName, "%cch.%d.%d.%d-%02d-%02d-%02d-%02d-%02d.dat",
-		cFile::PathSeparator, a_ChunkX, a_ChunkZ,
+		cFile::PathSeparator(), a_ChunkX, a_ChunkZ,
 		stm.tm_year + 1900, stm.tm_mon + 1, stm.tm_mday, stm.tm_hour, stm.tm_min, stm.tm_sec
 	);
 
@@ -286,7 +286,7 @@ cWSSAnvil::cMCAFile * cWSSAnvil::LoadMCAFile(const cChunkCoords & a_Chunk)
 
 	// Load it anew:
 	AString FileName;
-	Printf(FileName, "%s%cregion", m_World->GetDataPath().c_str(), cFile::PathSeparator);
+	Printf(FileName, "%s%cregion", m_World->GetDataPath().c_str(), cFile::PathSeparator());
 	cFile::CreateFolder(FILE_IO_PREFIX + FileName);
 	AppendPrintf(FileName, "/r.%d.%d.mca", RegionX, RegionZ);
 	cMCAFile * f = new cMCAFile(*this, FileName, RegionX, RegionZ);
@@ -716,22 +716,25 @@ cBlockEntity * cWSSAnvil::LoadBlockEntityFromNBT(const cParsedNBT & a_NBT, int a
 
 		// Blocktypes that have block entities but don't load their contents from disk:
 		case E_BLOCK_ENDER_CHEST:   return nullptr;
-	}
 
-	// All the other blocktypes should have no entities assigned to them. Report an error:
-	// Get the "id" tag:
-	int TagID = a_NBT.FindChildByName(a_Tag, "id");
-	AString TypeName("<unknown>");
-	if (TagID >= 0)
-	{
-		TypeName.assign(a_NBT.GetData(TagID), static_cast<size_t>(a_NBT.GetDataLength(TagID)));
+		default:
+		{
+			// All the other blocktypes should have no entities assigned to them. Report an error:
+			// Get the "id" tag:
+			int TagID = a_NBT.FindChildByName(a_Tag, "id");
+			AString TypeName("<unknown>");
+			if (TagID >= 0)
+			{
+				TypeName.assign(a_NBT.GetData(TagID), static_cast<size_t>(a_NBT.GetDataLength(TagID)));
+			}
+			LOGINFO("WorldLoader(%s): Block entity mismatch: block type %s (%d), type \"%s\", at {%d, %d, %d}; the entity will be lost.",
+				m_World->GetName().c_str(),
+				ItemTypeToString(a_BlockType).c_str(), a_BlockType, TypeName.c_str(),
+				a_BlockX, a_BlockY, a_BlockZ
+			);
+			return nullptr;
+		}
 	}
-	LOGINFO("WorldLoader(%s): Block entity mismatch: block type %s (%d), type \"%s\", at {%d, %d, %d}; the entity will be lost.",
-		m_World->GetName().c_str(),
-		ItemTypeToString(a_BlockType).c_str(), a_BlockType, TypeName.c_str(),
-		a_BlockX, a_BlockY, a_BlockZ
-	);
-	return nullptr;
 }
 
 
@@ -1645,13 +1648,15 @@ void cWSSAnvil::LoadOldMinecartFromNBT(cEntityList & a_Entities, const cParsedNB
 	{
 		return;
 	}
-	switch (a_NBT.GetInt(TypeTag))
+	int MinecartType = a_NBT.GetInt(TypeTag);
+	switch (MinecartType)
 	{
 		case 0: LoadMinecartRFromNBT(a_Entities, a_NBT, a_TagIdx); break;  // Rideable minecart
 		case 1: LoadMinecartCFromNBT(a_Entities, a_NBT, a_TagIdx); break;  // Minecart with chest
 		case 2: LoadMinecartFFromNBT(a_Entities, a_NBT, a_TagIdx); break;  // Minecart with furnace
 		case 3: LoadMinecartTFromNBT(a_Entities, a_NBT, a_TagIdx); break;  // Minecart with TNT
 		case 4: LoadMinecartHFromNBT(a_Entities, a_NBT, a_TagIdx); break;  // Minecart with Hopper
+		default: LOGWARNING("cWSSAnvil::LoadOldMinecartFromNBT: Unhandled minecart type (%d)", MinecartType); break;
 	}
 }
 
@@ -3149,9 +3154,28 @@ bool cWSSAnvil::LoadEntityBaseFromNBT(cEntity & a_Entity, const cParsedNBT & a_N
 	a_Entity.SetYaw(Rotation[0]);
 	a_Entity.SetRoll(Rotation[1]);
 
-	// Load health:
+	// Depending on the Minecraft version, the entity's health is
+	// stored either as a float Health tag (HealF prior to 1.9) or
+	// as a short Health tag. The float tags should be preferred.
 	int Health = a_NBT.FindChildByName(a_TagIdx, "Health");
-	a_Entity.SetHealth(Health > 0 ? a_NBT.GetShort(Health) : a_Entity.GetMaxHealth());
+	int HealF  = a_NBT.FindChildByName(a_TagIdx, "HealF");
+
+	if (Health > 0 && a_NBT.GetType(Health) == TAG_Float)
+	{
+		a_Entity.SetHealth(a_NBT.GetFloat(Health));
+	}
+	else if (HealF > 0)
+	{
+		a_Entity.SetHealth(a_NBT.GetFloat(HealF));
+	}
+	else if (Health > 0)
+	{
+		a_Entity.SetHealth(static_cast<float>(a_NBT.GetShort(Health)));
+	}
+	else
+	{
+		a_Entity.SetHealth(a_Entity.GetMaxHealth());
+	}
 
 	return true;
 }

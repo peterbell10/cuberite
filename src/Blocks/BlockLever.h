@@ -19,12 +19,13 @@ public:
 
 	virtual bool OnUse(cChunkInterface & a_ChunkInterface, cWorldInterface & a_WorldInterface, cPlayer & a_Player, int a_BlockX, int a_BlockY, int a_BlockZ, eBlockFace a_BlockFace, int a_CursorX, int a_CursorY, int a_CursorZ) override
 	{
+		Vector3i Coords(a_BlockX, a_BlockY, a_BlockZ);
 		// Flip the ON bit on / off using the XOR bitwise operation
-		NIBBLETYPE Meta = (a_ChunkInterface.GetBlockMeta(a_BlockX, a_BlockY, a_BlockZ) ^ 0x08);
+		NIBBLETYPE Meta = (a_ChunkInterface.GetBlockMeta(Coords) ^ 0x08);
 
-		a_ChunkInterface.SetBlockMeta(a_BlockX, a_BlockY, a_BlockZ, Meta);
-		a_WorldInterface.WakeUpSimulators({a_BlockX, a_BlockY, a_BlockZ});
-		a_WorldInterface.GetBroadcastManager().BroadcastSoundEffect("block.lever.click", static_cast<double>(a_BlockX), static_cast<double>(a_BlockY), static_cast<double>(a_BlockZ), 0.5f, (Meta & 0x08) ? 0.6f : 0.5f);
+		a_ChunkInterface.SetBlockMeta(Coords.x, Coords.y, Coords.z, Meta);
+		a_WorldInterface.WakeUpSimulators(Coords);
+		a_WorldInterface.GetBroadcastManager().BroadcastSoundEffect("block.lever.click", Vector3d(Coords), 0.5f, (Meta & 0x08) ? 0.6f : 0.5f);
 		return true;
 	}
 
@@ -64,10 +65,7 @@ public:
 			case BLOCK_FACE_YM:   return 0x0;
 			case BLOCK_FACE_NONE: return 0x6;
 		}
-		#if !defined(__clang__)
-			ASSERT(!"Unknown BLOCK_FACE");
-			return 0;
-		#endif
+		UNREACHABLE("Unsupported block face");
 	}
 
 	inline static eBlockFace BlockMetaDataToBlockFace(NIBBLETYPE a_Meta)

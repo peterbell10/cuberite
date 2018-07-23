@@ -21,6 +21,7 @@
 #include "../BlockArea.h"
 #include "../EffectID.h"
 #include "../ClientHandle.h"
+#include "Mobs/Horse.h"
 
 
 
@@ -992,10 +993,10 @@ void cSlotAreaAnvil::OnTakeResult(cPlayer & a_Player)
 	m_ParentWindow.SetProperty(0, static_cast<short>(m_MaximumCost), a_Player);
 
 	m_MaximumCost = 0;
-	reinterpret_cast<cAnvilWindow &>(m_ParentWindow).SetRepairedItemName("", nullptr);
+	static_cast<cAnvilWindow &>(m_ParentWindow).SetRepairedItemName("", nullptr);
 
 	int PosX, PosY, PosZ;
-	reinterpret_cast<cAnvilWindow &>(m_ParentWindow).GetBlockPos(PosX, PosY, PosZ);
+	static_cast<cAnvilWindow &>(m_ParentWindow).GetBlockPos(PosX, PosY, PosZ);
 
 	BLOCKTYPE Block;
 	NIBBLETYPE BlockMeta;
@@ -1141,7 +1142,7 @@ void cSlotAreaAnvil::UpdateResult(cPlayer & a_Player)
 	}
 
 	int NameChangeExp = 0;
-	const AString & RepairedItemName = reinterpret_cast<cAnvilWindow*>(&m_ParentWindow)->GetRepairedItemName();
+	const AString & RepairedItemName = static_cast<cAnvilWindow*>(&m_ParentWindow)->GetRepairedItemName();
 	if (RepairedItemName.empty())
 	{
 		// Remove custom name
@@ -1235,8 +1236,11 @@ bool cSlotAreaBeacon::IsPlaceableItem(short a_ItemType)
 		{
 			return true;
 		}
+		default:
+		{
+			return false;
+		}
 	}
-	return false;
 }
 
 
@@ -1905,7 +1909,6 @@ const cItem * cSlotAreaFurnace::GetSlot(int a_SlotNum, cPlayer & a_Player) const
 
 void cSlotAreaFurnace::SetSlot(int a_SlotNum, cPlayer & a_Player, const cItem & a_Item)
 {
-	UNUSED(a_Player);
 	m_Furnace->SetSlot(a_SlotNum, a_Item);
 }
 
@@ -1928,6 +1931,12 @@ void cSlotAreaFurnace::OnSlotChanged(cItemGrid * a_ItemGrid, int a_SlotNum)
 
 void cSlotAreaFurnace::HandleSmeltItem(const cItem & a_Result, cPlayer & a_Player)
 {
+	int Reward = m_Furnace->GetAndResetReward();
+	if (Reward > 0)
+	{
+		a_Player.GetWorld()->SpawnExperienceOrb(a_Player.GetPosX(), a_Player.GetPosY(), a_Player.GetPosZ(), Reward);
+	}
+
 	/** TODO 2014-05-12 xdot: Figure out when to call this method. */
 	switch (a_Result.m_ItemType)
 	{
@@ -2406,8 +2415,8 @@ bool cSlotAreaArmor::CanPlaceArmorInSlot(int a_SlotNum, const cItem & a_Item)
 		case 1:  return ItemCategory::IsChestPlate(a_Item.m_ItemType);
 		case 2:  return ItemCategory::IsLeggings(a_Item.m_ItemType);
 		case 3:  return ItemCategory::IsBoots(a_Item.m_ItemType);
+		default: return false;
 	}
-	return false;
 }
 
 
@@ -2587,6 +2596,124 @@ cItem * cSlotAreaTemporary::GetPlayerSlots(cPlayer & a_Player)
 		return nullptr;
 	}
 	return itr->second.data();
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// cSlotAreaHorse:
+
+cSlotAreaHorse::cSlotAreaHorse(cHorse & a_Horse, cWindow & a_ParentWindow) :
+	cSlotArea(2, a_ParentWindow),
+	m_Horse(a_Horse)
+{
+}
+
+
+
+
+
+void cSlotAreaHorse::Clicked(cPlayer & a_Player, int a_SlotNum, eClickAction a_ClickAction, const cItem & a_ClickedItem)
+{
+	cItem & DraggingItem = a_Player.GetDraggingItem();
+
+	switch (a_ClickAction)
+	{
+		case caLeftClick:
+		case caRightClick:
+		case caDblClick:
+		{
+			// Check for invalid item types
+			if (DraggingItem.IsEmpty())
+			{
+				break;
+			}
+
+			switch (a_SlotNum)
+			{
+				case SaddleSlot:
+				{
+					if (DraggingItem.m_ItemType != E_ITEM_SADDLE)
+					{
+						return;
+					}
+				}
+				case ArmorSlot:
+				{
+					if (!ItemCategory::IsHorseArmor(DraggingItem.m_ItemType))
+					{
+						return;
+					}
+				}
+				default: break;
+			}
+		}
+		default: break;
+	}
+
+	cSlotArea::Clicked(a_Player, a_SlotNum, a_ClickAction, a_ClickedItem);
+}
+
+
+
+
+
+const cItem * cSlotAreaHorse::GetSlot(int a_SlotNum, cPlayer & a_Player) const
+{
+	static const cItem InvalidItem;
+	switch (a_SlotNum)
+	{
+		case SaddleSlot: return &m_Horse.GetHorseSaddle();
+		case ArmorSlot:  return &m_Horse.GetHorseArmorItem();
+		default:
+		{
+			LOGWARN("cSlotAreaHorse::GetSlot: Invalid slot number %d", a_SlotNum);
+			return &InvalidItem;
+		}
+	}
+}
+
+
+
+
+
+void cSlotAreaHorse::SetSlot(int a_SlotNum, cPlayer & a_Player, const cItem & a_Item)
+{
+	switch (a_SlotNum)
+	{
+		case SaddleSlot: m_Horse.SetHorseSaddle(a_Item); break;
+		case ArmorSlot:  m_Horse.SetHorseArmor(a_Item);  break;
+		default:
+		{
+			LOGWARN("cSlotAreaHorse::SetSlot: Invalid slot number %d", a_SlotNum);
+		}
+	}
+}
+
+
+
+
+
+void cSlotAreaHorse::DistributeStack(cItem & a_ItemStack, cPlayer & a_Player, bool a_ShouldApply, bool a_KeepEmptySlots, bool a_BackFill)
+{
+	if (ItemCategory::IsHorseArmor(a_ItemStack.m_ItemType) && m_Horse.GetHorseArmorItem().IsEmpty())
+	{
+		if (a_ShouldApply)
+		{
+			m_Horse.SetHorseArmor(a_ItemStack.CopyOne());
+		}
+		--a_ItemStack.m_ItemCount;
+	}
+	else if ((a_ItemStack.m_ItemType == E_ITEM_SADDLE) && !m_Horse.IsSaddled())
+	{
+		if (a_ShouldApply)
+		{
+			m_Horse.SetHorseSaddle(a_ItemStack.CopyOne());
+		}
+		--a_ItemStack.m_ItemCount;
+	}
 }
 
 

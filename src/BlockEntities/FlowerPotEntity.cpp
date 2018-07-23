@@ -44,7 +44,7 @@ void cFlowerPotEntity::Destroy(void)
 void cFlowerPotEntity::CopyFrom(const cBlockEntity & a_Src)
 {
 	Super::CopyFrom(a_Src);
-	auto & src = reinterpret_cast<const cFlowerPotEntity &>(a_Src);
+	auto & src = static_cast<const cFlowerPotEntity &>(a_Src);
 	m_Item = src.m_Item;
 }
 
@@ -67,7 +67,7 @@ bool cFlowerPotEntity::UsedBy(cPlayer * a_Player)
 		{
 			a_Player->GetInventory().RemoveOneEquippedItem();
 		}
-		m_World->BroadcastBlockEntity(m_PosX, m_PosY, m_PosZ, a_Player->GetClientHandle());
+		m_World->BroadcastBlockEntity(GetPos(), a_Player->GetClientHandle());
 	}
 	return true;
 }

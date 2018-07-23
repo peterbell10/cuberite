@@ -5,6 +5,7 @@
 
 #include "Player.h"
 #include "Mobs/Wolf.h"
+#include "Mobs/Horse.h"
 #include "../BoundingBox.h"
 #include "../ChatColor.h"
 #include "../Server.h"
@@ -34,6 +35,41 @@
 
 // 1000 = once per second
 #define PLAYER_LIST_TIME_MS std::chrono::milliseconds(1000)
+
+namespace
+{
+
+/** Returns the old Offline UUID generated before becoming vanilla compliant. */
+cUUID GetOldStyleOfflineUUID(const AString & a_PlayerName)
+{
+	// Use lowercase username
+	auto BaseUUID = cUUID::GenerateVersion3(StrToLower(a_PlayerName)).ToRaw();
+	// Clobber a full nibble around the variant bits
+	BaseUUID[8] = (BaseUUID[8] & 0x0f) | 0x80;
+
+	cUUID Ret;
+	Ret.FromRaw(BaseUUID);
+	return Ret;
+}
+
+
+
+
+
+/** Returns the folder for the player data based on the UUID given.
+This can be used both for online and offline UUIDs. */
+AString GetUUIDFolderName(const cUUID & a_Uuid)
+{
+	AString UUID = a_Uuid.ToShortString();
+
+	AString res(FILE_IO_PREFIX "players/");
+	res.append(UUID, 0, 2);
+	res.push_back('/');
+	return res;
+}
+
+}  // namespace (anonymous)
+
 
 
 
@@ -91,9 +127,6 @@ cPlayer::cPlayer(cClientHandlePtr a_Client, const AString & a_PlayerName) :
 {
 	ASSERT(a_PlayerName.length() <= 16);  // Otherwise this player could crash many clients...
 
-	m_IsSwimming = false;
-	m_IsSubmerged = false;
-
 	m_InventoryWindow = new cInventoryWindow(*this);
 	m_CurrentWindow = m_InventoryWindow;
 	m_InventoryWindow->OpenedByPlayer(*this);
@@ -114,6 +147,9 @@ cPlayer::cPlayer(cClientHandlePtr a_Client, const AString & a_PlayerName) :
 
 		// This is a new player. Set the player spawn point to the spawn point of the default world
 		SetBedPos(Vector3i(static_cast<int>(World->GetSpawnX()), static_cast<int>(World->GetSpawnY()), static_cast<int>(World->GetSpawnZ())), World);
+
+		SetWorld(World);  // Use default world
+		SetCapabilities();
 
 		LOGD("Player \"%s\" is connecting for the first time, spawning at default world spawn {%.2f, %.2f, %.2f}",
 			a_PlayerName.c_str(), GetPosX(), GetPosY(), GetPosZ()
@@ -677,6 +713,10 @@ void cPlayer::FinishEating(void)
 	{
 		return;
 	}
+	if (!IsGameModeCreative())
+	{
+		GetInventory().RemoveOneEquippedItem();
+	}
 	ItemHandler->OnFoodEaten(m_World, this, &Item);
 }
 
@@ -699,6 +739,18 @@ void cPlayer::SendHealth(void)
 	if (m_ClientHandle != nullptr)
 	{
 		m_ClientHandle->SendHealth();
+	}
+}
+
+
+
+
+
+void cPlayer::SendHotbarActiveSlot(void)
+{
+	if (m_ClientHandle != nullptr)
+	{
+		m_ClientHandle->SendHeldItemChange(m_Inventory.GetEquippedSlotNum());
 	}
 }
 
@@ -932,17 +984,14 @@ void cPlayer::SetFlying(bool a_IsFlying)
 
 
 
-void cPlayer::ApplyArmorDamage(int DamageBlocked)
+void cPlayer::ApplyArmorDamage(int a_DamageBlocked)
 {
-	short ArmorDamage = static_cast<short>(DamageBlocked / 4);
-	if (ArmorDamage == 0)
+	short ArmorDamage = static_cast<short>(std::max(a_DamageBlocked / 4, 1));
+
+	for (int i = 0; i < 4; i++)
 	{
-		ArmorDamage = 1;
+		UseItem(cInventory::invArmorOffset + i, ArmorDamage);
 	}
-	m_Inventory.DamageItem(cInventory::invArmorOffset + 0, ArmorDamage);
-	m_Inventory.DamageItem(cInventory::invArmorOffset + 1, ArmorDamage);
-	m_Inventory.DamageItem(cInventory::invArmorOffset + 2, ArmorDamage);
-	m_Inventory.DamageItem(cInventory::invArmorOffset + 3, ArmorDamage);
 }
 
 
@@ -966,7 +1015,7 @@ bool cPlayer::DoTakeDamage(TakeDamageInfo & a_TDI)
 
 	if ((a_TDI.Attacker != nullptr) && (a_TDI.Attacker->IsPlayer()))
 	{
-		cPlayer * Attacker = reinterpret_cast<cPlayer *>(a_TDI.Attacker);
+		cPlayer * Attacker = static_cast<cPlayer *>(a_TDI.Attacker);
 
 		if ((m_Team != nullptr) && (m_Team == Attacker->m_Team))
 		{
@@ -1005,36 +1054,21 @@ bool cPlayer::DoTakeDamage(TakeDamageInfo & a_TDI)
 void cPlayer::NotifyNearbyWolves(cPawn * a_Opponent, bool a_IsPlayerInvolved)
 {
 	ASSERT(a_Opponent != nullptr);
-	class LookForWolves : public cEntityCallback
-	{
-	public:
-		cPlayer * m_Player;
-		cPawn * m_Attacker;
-		bool m_IsPlayerInvolved;
 
-		LookForWolves(cPlayer * a_Me, cPawn * a_MyAttacker, bool a_PlayerInvolved) :
-			m_Player(a_Me),
-			m_Attacker(a_MyAttacker),
-			m_IsPlayerInvolved(a_PlayerInvolved)
+	m_World->ForEachEntityInBox(cBoundingBox(GetPosition(), 16), [&] (cEntity & a_Entity)
 		{
-		}
-
-		virtual bool Item(cEntity * a_Entity) override
-		{
-			if (a_Entity->IsMob())
+			if (a_Entity.IsMob())
 			{
-				cMonster * Mob = static_cast<cMonster*>(a_Entity);
-				if (Mob->GetMobType() == mtWolf)
+				auto & Mob = static_cast<cMonster&>(a_Entity);
+				if (Mob.GetMobType() == mtWolf)
 				{
-					cWolf * Wolf = static_cast<cWolf*>(Mob);
-					Wolf->ReceiveNearbyFightInfo(m_Player->GetUUID(), m_Attacker, m_IsPlayerInvolved);
+					auto & Wolf = static_cast<cWolf&>(Mob);
+					Wolf.ReceiveNearbyFightInfo(GetUUID(), a_Opponent, a_IsPlayerInvolved);
 				}
 			}
 			return false;
 		}
-	} Callback(this, a_Opponent, a_IsPlayerInvolved);
-
-	m_World->ForEachEntityInBox(cBoundingBox(GetPosition(), 16), Callback);
+	);
 }
 
 
@@ -1073,36 +1107,31 @@ void cPlayer::KilledBy(TakeDamageInfo & a_TDI)
 
 	if ((a_TDI.Attacker == nullptr) && m_World->ShouldBroadcastDeathMessages())
 	{
-		AString DamageText;
-		switch (a_TDI.DamageType)
-		{
-			case dtRangedAttack: DamageText = "was shot"; break;
-			case dtLightning: DamageText = "was plasmified by lightining"; break;
-			case dtFalling: DamageText = GetRandomProvider().RandBool() ? "fell to death" : "hit the ground too hard"; break;
-			case dtDrowning: DamageText = "drowned"; break;
-			case dtSuffocating: DamageText = GetRandomProvider().RandBool() ? "git merge'd into a block" : "fused with a block"; break;
-			case dtStarving: DamageText = "forgot the importance of food"; break;
-			case dtCactusContact: DamageText = "was impaled on a cactus"; break;
-			case dtLavaContact: DamageText = "was melted by lava"; break;
-			case dtPoisoning: DamageText = "died from septicaemia"; break;
-			case dtWithering: DamageText = "is a husk of their former selves"; break;
-			case dtOnFire: DamageText = "forgot to stop, drop, and roll"; break;
-			case dtFireContact: DamageText = "burnt themselves to death"; break;
-			case dtInVoid: DamageText = "somehow fell out of the world"; break;
-			case dtPotionOfHarming: DamageText = "was magicked to death"; break;
-			case dtEnderPearl: DamageText = "misused an ender pearl"; break;
-			case dtAdmin: DamageText = "was administrator'd"; break;
-			case dtExplosion: DamageText = "blew up"; break;
-			case dtAttack: DamageText = "was attacked by thin air"; break;
-			#ifndef __clang__
-			default:
+		const AString DamageText = [&]
 			{
-				ASSERT(!"Unknown damage type");
-				DamageText = "died, somehow; we've no idea how though";
-				break;
-			}
-			#endif  // __clang__
-		}
+				switch (a_TDI.DamageType)
+				{
+					case dtRangedAttack:    return "was shot";
+					case dtLightning:       return "was plasmified by lightining";
+					case dtFalling:         return GetRandomProvider().RandBool() ? "fell to death" : "hit the ground too hard";
+					case dtDrowning:        return "drowned";
+					case dtSuffocating:     return GetRandomProvider().RandBool() ? "git merge'd into a block" : "fused with a block";
+					case dtStarving:        return "forgot the importance of food";
+					case dtCactusContact:   return "was impaled on a cactus";
+					case dtLavaContact:     return "was melted by lava";
+					case dtPoisoning:       return "died from septicaemia";
+					case dtWithering:       return "is a husk of their former selves";
+					case dtOnFire:          return "forgot to stop, drop, and roll";
+					case dtFireContact:     return "burnt themselves to death";
+					case dtInVoid:          return "somehow fell out of the world";
+					case dtPotionOfHarming: return "was magicked to death";
+					case dtEnderPearl:      return "misused an ender pearl";
+					case dtAdmin:           return "was administrator'd";
+					case dtExplosion:       return "blew up";
+					case dtAttack:          return "was attacked by thin air";
+				}
+				UNREACHABLE("Unsupported damage type");
+			}();
 		AString DeathMessage = Printf("%s %s", GetName().c_str(), DamageText.c_str());
 		PluginManager->CallHookKilled(*this, a_TDI, DeathMessage);
 		if (DeathMessage != AString(""))
@@ -1116,7 +1145,7 @@ void cPlayer::KilledBy(TakeDamageInfo & a_TDI)
 	}
 	else if (a_TDI.Attacker->IsPlayer())
 	{
-		cPlayer * Killer = reinterpret_cast<cPlayer *>(a_TDI.Attacker);
+		cPlayer * Killer = static_cast<cPlayer *>(a_TDI.Attacker);
 		AString DeathMessage = Printf("%s was killed by %s", GetName().c_str(), Killer->GetName().c_str());
 		PluginManager->CallHookKilled(*this, a_TDI, DeathMessage);
 		if (DeathMessage != AString(""))
@@ -1157,7 +1186,7 @@ void cPlayer::Killed(cEntity * a_Victim)
 	}
 	else if (a_Victim->IsMob())
 	{
-		if (reinterpret_cast<cMonster *>(a_Victim)->GetMobFamily() == cMonster::mfHostile)
+		if (static_cast<cMonster *>(a_Victim)->GetMobFamily() == cMonster::mfHostile)
 		{
 			AwardAchievement(achKillMonster);
 		}
@@ -1229,8 +1258,7 @@ Vector3d cPlayer::GetEyePosition(void) const
 
 bool cPlayer::IsGameModeCreative(void) const
 {
-	return (m_GameMode == gmCreative) ||  // Either the player is explicitly in Creative
-		((m_GameMode == gmNotSet) &&  m_World->IsGameModeCreative());  // or they inherit from the world and the world is Creative
+	return (GetEffectiveGameMode() == gmCreative);
 }
 
 
@@ -1239,8 +1267,7 @@ bool cPlayer::IsGameModeCreative(void) const
 
 bool cPlayer::IsGameModeSurvival(void) const
 {
-	return (m_GameMode == gmSurvival) ||  // Either the player is explicitly in Survival
-		((m_GameMode == gmNotSet) &&  m_World->IsGameModeSurvival());  // or they inherit from the world and the world is Survival
+	return (GetEffectiveGameMode() == gmSurvival);
 }
 
 
@@ -1249,8 +1276,7 @@ bool cPlayer::IsGameModeSurvival(void) const
 
 bool cPlayer::IsGameModeAdventure(void) const
 {
-	return (m_GameMode == gmAdventure) ||  // Either the player is explicitly in Adventure
-		((m_GameMode == gmNotSet) &&  m_World->IsGameModeAdventure());  // or they inherit from the world and the world is Adventure
+	return (GetEffectiveGameMode() == gmAdventure);
 }
 
 
@@ -1258,8 +1284,7 @@ bool cPlayer::IsGameModeAdventure(void) const
 
 bool cPlayer::IsGameModeSpectator(void) const
 {
-	return (m_GameMode == gmSpectator) ||  // Either the player is explicitly in Spectator
-		((m_GameMode == gmNotSet) &&  m_World->IsGameModeSpectator());  // or they inherit from the world and the world is Spectator
+	return (GetEffectiveGameMode() == gmSpectator);
 }
 
 
@@ -1527,40 +1552,38 @@ void cPlayer::SetGameMode(eGameMode a_GameMode)
 
 
 
-void cPlayer::LoginSetGameMode( eGameMode a_GameMode)
-{
-	m_GameMode = a_GameMode;
-
-	SetCapabilities();
-}
-
-
-
-
-
 void cPlayer::SetCapabilities()
 {
-	if (!IsGameModeCreative() || IsGameModeSpectator())
+	// Fly ability
+	if (IsGameModeCreative() || IsGameModeSpectator())
+	{
+		SetCanFly(true);
+	}
+	else
 	{
 		SetFlying(false);
 		SetCanFly(false);
 	}
 
+	// Visible
 	if (IsGameModeSpectator())
 	{
 		SetVisible(false);
-		SetCanFly(true);
+	}
+	else
+	{
+		SetVisible(true);
+	}
 
+	// Set for spectator
+	if (IsGameModeSpectator())
+	{
 		// Clear the current dragging item of the player
 		if (GetWindow() != nullptr)
 		{
 			m_DraggingItem.Empty();
 			GetClientHandle()->SendInventorySlot(-1, -1, m_DraggingItem);
 		}
-	}
-	else
-	{
-		SetVisible(true);
 	}
 }
 
@@ -1625,7 +1648,7 @@ void cPlayer::TeleportToCoords(double a_PosX, double a_PosY, double a_PosZ)
 	//  ask plugins to allow teleport to the new position.
 	if (!cRoot::Get()->GetPluginManager()->CallHookEntityTeleport(*this, m_LastPosition, Vector3d(a_PosX, a_PosY, a_PosZ)))
 	{
-		SetPosition(a_PosX, a_PosY, a_PosZ);
+		ResetPosition({a_PosX, a_PosY, a_PosZ});
 		FreezeInternal(GetPosition(), false);
 		m_LastGroundHeight = a_PosY;
 		m_bIsTeleporting = true;
@@ -2014,11 +2037,17 @@ bool cPlayer::DoMoveToWorld(cWorld * a_World, bool a_ShouldSendRespawn, Vector3d
 		VERIFY(!GetWorld()->RemovePlayer(*this, false));
 
 		// Set position to the new position
-		SetPosition(a_NewPosition);
+		ResetPosition(a_NewPosition);
 		FreezeInternal(a_NewPosition, false);
 
 		// Stop all mobs from targeting this player
-		// StopEveryoneFromTargetingMe(); // mobTodo
+		// StopEveryoneFromTargetingMe();  // mobTodo
+
+		// Deal with new world
+		SetWorld(a_World);
+
+		// Set capabilities based on new world
+		SetCapabilities();
 
 		cClientHandle * ch = this->GetClientHandle();
 		if (ch != nullptr)
@@ -2028,7 +2057,6 @@ bool cPlayer::DoMoveToWorld(cWorld * a_World, bool a_ShouldSendRespawn, Vector3d
 			{
 				m_ClientHandle->SendRespawn(a_World->GetDimension());
 			}
-
 
 			// Update the view distance.
 			ch->SetViewDistance(m_ClientHandle->GetRequestedViewDistance());
@@ -2045,7 +2073,7 @@ bool cPlayer::DoMoveToWorld(cWorld * a_World, bool a_ShouldSendRespawn, Vector3d
 
 		// Queue add to new world and removal from the old one
 
-		SetWorld(a_World);  // Chunks may be streamed before cWorld::AddPlayer() sets the world to the new value
+		// Chunks may be streamed before cWorld::AddPlayer() sets the world to the new value
 		cChunk * ParentChunk = this->GetParentChunk();
 
 		LOGD("Warping player \"%s\" from world \"%s\" to \"%s\". Source chunk: (%d, %d) ",
@@ -2076,8 +2104,25 @@ bool cPlayer::LoadFromDisk(cWorldPtr & a_World)
 		return true;
 	}
 
-	// Load from the offline UUID file, if allowed:
+	// Check for old offline UUID filename, if it exists migrate to new filename
 	cUUID OfflineUUID = cClientHandle::GenerateOfflineUUID(GetName());
+	auto OldFilename = GetUUIDFileName(GetOldStyleOfflineUUID(GetName()));
+	auto NewFilename = GetUUIDFileName(m_UUID);
+	// Only move if there isn't already a new file
+	if (!cFile::IsFile(NewFilename) && cFile::IsFile(OldFilename))
+	{
+		cFile::CreateFolderRecursive(GetUUIDFolderName(m_UUID));  // Ensure folder exists to move to
+		if (
+			cFile::Rename(OldFilename, NewFilename) &&
+			(m_UUID == OfflineUUID) &&
+			LoadFromFile(NewFilename, a_World)
+		)
+		{
+			return true;
+		}
+	}
+
+	// Load from the offline UUID file, if allowed:
 	const char * OfflineUsage = " (unused)";
 	if (cRoot::Get()->GetServer()->ShouldLoadOfflinePlayerData())
 	{
@@ -2181,6 +2226,10 @@ bool cPlayer::LoadFromFile(const AString & a_FileName, cWorldPtr & a_World)
 	}
 
 	m_Inventory.LoadFromJson(root["inventory"]);
+
+	int equippedSlotNum = root.get("equippedItemSlot", 0).asInt();
+	m_Inventory.SetEquippedSlotNum(equippedSlotNum);
+
 	cEnderChestEntity::LoadFromJson(root["enderchestinventory"], m_EnderChestContents);
 
 	m_LoadedWorldName = root.get("world", "world").asString();
@@ -2217,10 +2266,38 @@ bool cPlayer::LoadFromFile(const AString & a_FileName, cWorldPtr & a_World)
 
 
 
+void cPlayer::OpenHorseInventory()
+{
+	if (
+		(m_AttachedTo == nullptr) ||
+		!m_AttachedTo->IsMob()
+	)
+	{
+		return;
+	}
+
+	auto & Mob = static_cast<cMonster &>(*m_AttachedTo);
+
+	if (Mob.GetMobType() != mtHorse)
+	{
+		return;
+	}
+
+	auto & Horse = static_cast<cHorse &>(Mob);
+	// The client sends requests for untame horses as well but shouldn't actually open
+	if (Horse.IsTame())
+	{
+		Horse.PlayerOpenWindow(*this);
+	}
+}
+
+
+
+
+
 bool cPlayer::SaveToDisk()
 {
-	cFile::CreateFolder(FILE_IO_PREFIX + AString("players/"));  // Create the "players" folder, if it doesn't exist yet (#1268)
-	cFile::CreateFolder(FILE_IO_PREFIX + AString("players/") + m_UUID.ToShortString().substr(0, 2));
+	cFile::CreateFolderRecursive(GetUUIDFolderName(m_UUID));
 
 	// create the JSON data
 	Json::Value JSON_PlayerPosition;
@@ -2243,6 +2320,7 @@ bool cPlayer::SaveToDisk()
 	root["position"]            = JSON_PlayerPosition;
 	root["rotation"]            = JSON_PlayerRotation;
 	root["inventory"]           = JSON_Inventory;
+	root["equippedItemSlot"]    = m_Inventory.GetEquippedSlotNum();
 	root["enderchestinventory"] = JSON_EnderChestInventory;
 	root["health"]              = m_Health;
 	root["xpTotal"]             = m_LifetimeTotalXp;
@@ -2315,37 +2393,56 @@ bool cPlayer::SaveToDisk()
 
 
 
-void cPlayer::UseEquippedItem(int a_Amount)
+void cPlayer::UseEquippedItem(short a_Damage)
 {
-	if (IsGameModeCreative() || IsGameModeSpectator())  // No damage in creative or spectator
+	// No durability loss in creative or spectator modes:
+	if (IsGameModeCreative() || IsGameModeSpectator())
 	{
 		return;
 	}
 
-	// If the item has an unbreaking enchantment, give it a random chance of not breaking:
-	cItem Item = GetEquippedItem();
-	int UnbreakingLevel = static_cast<int>(Item.m_Enchantments.GetLevel(cEnchantments::enchUnbreaking));
-	if (UnbreakingLevel > 0)
-	{
-		double chance = 0.0;
-		if (ItemCategory::IsArmor(Item.m_ItemType))
-		{
-			chance = 0.6 + (0.4 / (UnbreakingLevel + 1));
-		}
-		else
-		{
-			chance = 1.0 / (UnbreakingLevel + 1);
-		}
+	UseItem(cInventory::invHotbarOffset + m_Inventory.GetEquippedSlotNum(), a_Damage);
+}
 
-		if (GetRandomProvider().RandBool(chance))
-		{
-			return;
-		}
+
+
+
+
+void cPlayer::UseEquippedItem(cItemHandler::eDurabilityLostAction a_Action)
+{
+	// Get item being used:
+	cItem Item = GetEquippedItem();
+
+	// Get base damage for action type:
+	short Dmg = cItemHandler::GetItemHandler(Item)->GetDurabilityLossByAction(a_Action);
+
+	UseEquippedItem(Dmg);
+}
+
+
+
+
+
+void cPlayer::UseItem(int a_SlotNumber, short a_Damage)
+{
+	const cItem & Item = m_Inventory.GetSlot(a_SlotNumber);
+	if (Item.IsEmpty())
+	{
+		return;
 	}
 
-	if (GetInventory().DamageEquippedItem(static_cast<Int16>(a_Amount)))
+	// Ref: https://minecraft.gamepedia.com/Enchanting#Unbreaking
+	unsigned int UnbreakingLevel = Item.m_Enchantments.GetLevel(cEnchantments::enchUnbreaking);
+	double chance = ItemCategory::IsArmor(Item.m_ItemType)
+		? (0.6 + (0.4 / (UnbreakingLevel + 1))) : (1.0 / (UnbreakingLevel + 1));
+
+	// When durability is reduced by multiple points
+	// Unbreaking is applied for each point of reduction.
+	std::binomial_distribution<short> Dist(a_Damage, chance);
+	short ReducedDamage = Dist(GetRandomProvider().Engine());
+	if (m_Inventory.DamageItem(a_SlotNumber, ReducedDamage))
 	{
-		m_World->BroadcastSoundEffect("entity.item.break", GetPosX(), GetPosY(), GetPosZ(), 0.5f, static_cast<float>(0.75 + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
+		m_World->BroadcastSoundEffect("entity.item.break", GetPosition(), 0.5f, static_cast<float>(0.75 + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
 	}
 }
 
@@ -2415,17 +2512,12 @@ void cPlayer::HandleFloater()
 	{
 		return;
 	}
-	class cFloaterCallback :
-		public cEntityCallback
-	{
-	public:
-		virtual bool Item(cEntity * a_Entity) override
+	m_World->DoWithEntityByID(m_FloaterID, [](cEntity & a_Entity)
 		{
-			a_Entity->Destroy(true);
+			a_Entity.Destroy(true);
 			return true;
 		}
-	} Callback;
-	m_World->DoWithEntityByID(m_FloaterID, Callback);
+	);
 	SetIsFishing(false);
 }
 
@@ -2484,12 +2576,7 @@ void cPlayer::UpdateMovementStats(const Vector3d & a_DeltaPos, bool a_PreviousIs
 				m_Stats.AddValue(statDistClimbed, FloorC<StatValue>(a_DeltaPos.y * 100 + 0.5));
 			}
 		}
-		else if (IsSubmerged())
-		{
-			m_Stats.AddValue(statDistDove, Value);
-			AddFoodExhaustion(0.00015 * static_cast<double>(Value));
-		}
-		else if (IsSwimming())
+		else if (IsInWater())
 		{
 			m_Stats.AddValue(statDistSwum, Value);
 			AddFoodExhaustion(0.00015 * static_cast<double>(Value));
@@ -2523,7 +2610,7 @@ void cPlayer::UpdateMovementStats(const Vector3d & a_DeltaPos, bool a_PreviousIs
 			case cEntity::etBoat:     m_Stats.AddValue(statDistBoat,     Value); break;
 			case cEntity::etMonster:
 			{
-				cMonster * Monster = reinterpret_cast<cMonster *>(m_AttachedTo);
+				cMonster * Monster = static_cast<cMonster *>(m_AttachedTo);
 				switch (Monster->GetMobType())
 				{
 					case mtPig:   m_Stats.AddValue(statDistPig,   Value); break;
@@ -2669,29 +2756,18 @@ bool cPlayer::DoesPlacingBlocksIntersectEntity(const sSetBlockVector & a_Blocks)
 	cWorld * World = GetWorld();
 
 	// Check to see if any entity intersects any block being placed
-	class DoesIntersectBlock : public cEntityCallback
-	{
-	public:
-		const std::vector<cBoundingBox> & m_BoundingBoxes;
-
-		// The distance inside the block the entity can still be.
-		const double EPSILON = 0.0005;
-
-		DoesIntersectBlock(const std::vector<cBoundingBox> & a_BoundingBoxes) :
-			m_BoundingBoxes(a_BoundingBoxes)
+	return !World->ForEachEntityInBox(PlacingBounds, [&](cEntity & a_Entity)
 		{
-		}
+			// The distance inside the block the entity can still be.
+			const double EPSILON = 0.0005;
 
-		virtual bool Item(cEntity * a_Entity) override
-		{
-			if (!a_Entity->DoesPreventBlockPlacement())
+			if (!a_Entity.DoesPreventBlockPlacement())
 			{
 				return false;
 			}
-			cBoundingBox EntBox(a_Entity->GetPosition(), a_Entity->GetWidth() / 2, a_Entity->GetHeight());
-			for (auto BlockBox: m_BoundingBoxes)
+			cBoundingBox EntBox(a_Entity.GetPosition(), a_Entity.GetWidth() / 2, a_Entity.GetHeight());
+			for (auto BlockBox : PlacementBoxes)
 			{
-
 				// Put in a little bit of wiggle room
 				BlockBox.Expand(-EPSILON, -EPSILON, -EPSILON);
 				if (EntBox.DoesIntersect(BlockBox))
@@ -2701,15 +2777,7 @@ bool cPlayer::DoesPlacingBlocksIntersectEntity(const sSetBlockVector & a_Blocks)
 			}
 			return false;
 		}
-	} Callback(PlacementBoxes);
-
-	// See if any entities in that bounding box collide with anyone
-	if (!World->ForEachEntityInBox(PlacingBounds, Callback))
-	{
-		return true;
-	}
-
-	return false;
+	);
 }
 
 
@@ -2866,7 +2934,7 @@ AString cPlayer::GetUUIDFileName(const cUUID & a_UUID)
 {
 	AString UUID = a_UUID.ToLongString();
 
-	AString res("players/");
+	AString res(FILE_IO_PREFIX "players/");
 	res.append(UUID, 0, 2);
 	res.push_back('/');
 	res.append(UUID, 2, AString::npos);
@@ -3001,3 +3069,31 @@ float cPlayer::GetPlayerRelativeBlockHardness(BLOCKTYPE a_Block)
 	// LOGD("blockHardness: %f, digSpeed: %f, canHarvestBlockDivisor: %f\n", blockHardness, digSpeed, canHarvestBlockDivisor);
 	return (blockHardness < 0) ? 0 : ((digSpeed / blockHardness) / canHarvestBlockDivisor);
 }
+
+
+
+
+
+
+float cPlayer::GetExplosionExposureRate(Vector3d a_ExplosionPosition, float a_ExlosionPower)
+{
+	if (
+		IsGameModeSpectator() ||
+		(IsGameModeCreative() && !IsOnGround())
+	)
+	{
+		return 0;  // No impact from explosion
+	}
+
+	return super::GetExplosionExposureRate(a_ExplosionPosition, a_ExlosionPower);
+}
+
+
+
+
+
+
+
+
+
+

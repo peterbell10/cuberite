@@ -23,10 +23,13 @@ public:
 
 	virtual void GetFollowedItems(cItems & a_Items) override
 	{
+		a_Items.Add(E_ITEM_BEETROOT_SEEDS);
+		a_Items.Add(E_ITEM_MELON_SEEDS);
+		a_Items.Add(E_ITEM_PUMPKIN_SEEDS);
 		a_Items.Add(E_ITEM_SEEDS);
 	}
 
-	virtual void HandleFalling(void) override;
+	virtual bool DoTakeDamage(TakeDamageInfo & a_TDI) override;
 
 private:
 	// Tick controlling behaviors

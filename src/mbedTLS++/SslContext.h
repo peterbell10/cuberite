@@ -1,4 +1,4 @@
-﻿
+
 // SslContext.h
 
 // Declares the cSslContext class that holds everything a single SSL context needs to function
@@ -103,13 +103,13 @@ protected:
 	/** The callback used by mbedTLS when it wants to read encrypted data. */
 	static int ReceiveEncrypted(void * a_This, unsigned char * a_Buffer, size_t a_NumBytes)
 	{
-		return (reinterpret_cast<cSslContext *>(a_This))->ReceiveEncrypted(a_Buffer, a_NumBytes);
+		return (static_cast<cSslContext *>(a_This))->ReceiveEncrypted(a_Buffer, a_NumBytes);
 	}
 
 	/** The callback used by mbedTLS when it wants to write encrypted data. */
 	static int SendEncrypted(void * a_This, const unsigned char * a_Buffer, size_t a_NumBytes)
 	{
-		return (reinterpret_cast<cSslContext *>(a_This))->SendEncrypted(a_Buffer, a_NumBytes);
+		return (static_cast<cSslContext *>(a_This))->SendEncrypted(a_Buffer, a_NumBytes);
 	}
 
 	/** Called when mbedTLS wants to read encrypted data. */

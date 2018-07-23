@@ -15,6 +15,7 @@ SET (SRCS
 	EnderChestWindow.cpp
 	FurnaceWindow.cpp
 	HopperWindow.cpp
+	HorseWindow.cpp
 	InventoryWindow.cpp)
 
 SET (HDRS
@@ -30,15 +31,12 @@ SET (HDRS
 	EnderChestWindow.h
 	FurnaceWindow.h
 	HopperWindow.h
+	HorseWindow.h
 	InventoryWindow.h
 	MinecartWithChestWindow.h
 	WindowOwner.h)
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set_source_files_properties(SlotArea.cpp PROPERTIES COMPILE_FLAGS "-Wno-error=switch-enum ")
-	set_source_files_properties(Window.cpp PROPERTIES COMPILE_FLAGS "-Wno-error=switch-enum ")
-endif()
-
 if(NOT MSVC)
 	add_library(UI ${SRCS} ${HDRS})
+	target_link_libraries(UI fmt::fmt)
 endif()

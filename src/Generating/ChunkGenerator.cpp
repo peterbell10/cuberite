@@ -47,7 +47,7 @@ cChunkGenerator::~cChunkGenerator()
 
 
 
-bool cChunkGenerator::Start(cPluginInterface & a_PluginInterface, cChunkSink & a_ChunkSink, cIniFile & a_IniFile)
+bool cChunkGenerator::Initialize(cPluginInterface & a_PluginInterface, cChunkSink & a_ChunkSink, cIniFile & a_IniFile)
 {
 	m_PluginInterface = &a_PluginInterface;
 	m_ChunkSink = &a_ChunkSink;
@@ -86,8 +86,7 @@ bool cChunkGenerator::Start(cPluginInterface & a_PluginInterface, cChunkSink & a
 	}
 
 	m_Generator->Initialize(a_IniFile);
-
-	return super::Start();
+	return true;
 }
 
 
@@ -99,7 +98,7 @@ void cChunkGenerator::Stop(void)
 	m_ShouldTerminate = true;
 	m_Event.Set();
 	m_evtRemoved.Set();  // Wake up anybody waiting for empty queue
-	Wait();
+	super::Stop();
 
 	delete m_Generator;
 	m_Generator = nullptr;
@@ -119,7 +118,7 @@ void cChunkGenerator::QueueGenerateChunk(int a_ChunkX, int a_ChunkZ, bool a_Forc
 		// Add to queue, issue a warning if too many:
 		if (m_Queue.size() >= QUEUE_WARNING_LIMIT)
 		{
-			LOGWARN("WARNING: Adding chunk [%i, %i] to generation queue; Queue is too big! (" SIZE_T_FMT ")", a_ChunkX, a_ChunkZ, m_Queue.size());
+			LOGWARN("WARNING: Adding chunk [%i, %i] to generation queue; Queue is too big! (%zu)", a_ChunkX, a_ChunkZ, m_Queue.size());
 		}
 		m_Queue.push_back(cQueueItem{a_ChunkX, a_ChunkZ, a_ForceGenerate, a_Callback});
 	}

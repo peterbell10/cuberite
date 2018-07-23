@@ -50,7 +50,7 @@ cChestEntity::~cChestEntity()
 void cChestEntity::CopyFrom(const cBlockEntity & a_Src)
 {
 	Super::CopyFrom(a_Src);
-	auto & src = reinterpret_cast<const cChestEntity &>(a_Src);
+	auto & src = static_cast<const cChestEntity &>(a_Src);
 	m_Contents.CopyFrom(src.m_Contents);
 
 	// Reset the neighbor and player count, there's no sense in copying these:
@@ -138,33 +138,18 @@ bool cChestEntity::UsedBy(cPlayer * a_Player)
 void cChestEntity::ScanNeighbours()
 {
 	// Callback for finding neighbouring chest:
-	class cFindNeighbour :
-		public cChestCallback
+	auto FindNeighbour = [this](cChestEntity & a_Chest)
 	{
-	public:
-		cChestEntity * m_Neighbour;
-		BLOCKTYPE      m_ChestType;
-
-		cFindNeighbour(BLOCKTYPE a_ChestType) :
-			m_Neighbour(nullptr),
-			m_ChestType(a_ChestType)
+		if (a_Chest.GetBlockType() != m_BlockType)
 		{
+			// Neighboring block is not the same type of chest
+			return true;
 		}
-
-		virtual bool Item(cChestEntity * a_Chest) override
-		{
-			if (a_Chest->GetBlockType() != m_ChestType)
-			{
-				// Neighboring block is not the same type of chest
-				return true;
-			}
-			m_Neighbour = a_Chest;
-			return false;
-		}
+		m_Neighbour = &a_Chest;
+		return false;
 	};
 
 	// Scan horizontally adjacent blocks for any neighbouring chest of the same type:
-	cFindNeighbour FindNeighbour(m_BlockType);
 	if (
 		m_World->DoWithChestAt(m_PosX - 1, m_PosY, m_PosZ,     FindNeighbour) ||
 		m_World->DoWithChestAt(m_PosX + 1, m_PosY, m_PosZ,     FindNeighbour) ||
@@ -172,7 +157,6 @@ void cChestEntity::ScanNeighbours()
 		m_World->DoWithChestAt(m_PosX,     m_PosY, m_PosZ + 1, FindNeighbour)
 	)
 	{
-		m_Neighbour = FindNeighbour.m_Neighbour;
 		m_Neighbour->m_Neighbour = this;
 		// Force neighbour's window shut. Does Mojang server do this or should a double window open?
 		m_Neighbour->DestroyWindow();

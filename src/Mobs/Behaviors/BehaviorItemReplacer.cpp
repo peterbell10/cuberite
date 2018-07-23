@@ -2,11 +2,11 @@
 
 #include "BehaviorItemReplacer.h"
 #include "../Monster.h"
-#include "../Entities/Player.h"
+#include "../../Entities/Player.h"
 
 
 cBehaviorItemReplacer::cBehaviorItemReplacer(short a_OriginalItem, short a_NewItem) :
-	m_OriginalItem(a_OriginalItem) ,
+	m_OriginalItem(a_OriginalItem),
 	m_NewItem(a_NewItem)
 {
 

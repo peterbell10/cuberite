@@ -1,4 +1,4 @@
-﻿
+
 // BlockingSslClientSocket.cpp
 
 // Implements the cBlockingSslClientSocket class representing a blocking TCP socket with client SSL encryption over it
@@ -208,7 +208,7 @@ bool cBlockingSslClientSocket::Send(const void * a_Data, size_t a_NumBytes)
 	}
 
 	// Keep sending the data until all of it is sent:
-	const char * Data = reinterpret_cast<const char *>(a_Data);
+	const char * Data = static_cast<const char *>(a_Data);
 	size_t NumBytes = a_NumBytes;
 	for (;;)
 	{

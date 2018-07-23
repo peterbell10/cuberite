@@ -39,6 +39,7 @@ Implements the 1.8 protocol classes:
 
 #include "../Mobs/IncludeAllMonsters.h"
 #include "../UI/Window.h"
+#include "../UI/HorseWindow.h"
 
 #include "../BlockEntities/BeaconEntity.h"
 #include "../BlockEntities/CommandBlockEntity.h"
@@ -591,6 +592,19 @@ void cProtocol_1_8_0::SendHealth(void)
 
 
 
+void cProtocol_1_8_0::SendHeldItemChange(int a_ItemIndex)
+{
+	ASSERT((a_ItemIndex >= 0) && (a_ItemIndex <= 8));  // Valid check
+
+	cPacketizer Pkt(*this, 0x09);  // Held item change
+	cPlayer * Player = m_Client->GetPlayer();
+	Pkt.WriteBEInt8(static_cast<Int8>(Player->GetInventory().GetEquippedSlotNum()));
+}
+
+
+
+
+
 void cProtocol_1_8_0::SendHideTitle(void)
 {
 	ASSERT(m_State == 3);  // In game mode?
@@ -933,7 +947,7 @@ void cProtocol_1_8_0::SendPlayerListAddPlayer(const cPlayer & a_Player)
 		}
 	}
 
-	Pkt.WriteVarInt32(static_cast<UInt32>(a_Player.GetGameMode()));
+	Pkt.WriteVarInt32(static_cast<UInt32>(a_Player.GetEffectiveGameMode()));
 	Pkt.WriteVarInt32(static_cast<UInt32>(a_Player.GetClientHandle()->GetPing()));
 	Pkt.WriteBool(false);
 }
@@ -964,7 +978,7 @@ void cProtocol_1_8_0::SendPlayerListUpdateGameMode(const cPlayer & a_Player)
 	Pkt.WriteVarInt32(1);
 	Pkt.WriteVarInt32(1);
 	Pkt.WriteUUID(a_Player.GetUUID());
-	Pkt.WriteVarInt32(static_cast<UInt32>(a_Player.GetGameMode()));
+	Pkt.WriteVarInt32(static_cast<UInt32>(a_Player.GetEffectiveGameMode()));
 }
 
 
@@ -1678,7 +1692,8 @@ void cProtocol_1_8_0::SendWindowOpen(const cWindow & a_Window)
 
 	if (a_Window.GetWindowType() == cWindow::wtAnimalChest)
 	{
-		Pkt.WriteBEInt32(0);  // TODO: The animal's EntityID
+		UInt32 HorseID = static_cast<const cHorseWindow &>(a_Window).GetHorseID();
+		Pkt.WriteBEInt32(static_cast<Int32>(HorseID));
 	}
 }
 
@@ -1865,7 +1880,7 @@ void cProtocol_1_8_0::AddReceivedData(const char * a_Data, size_t a_Size)
 			ASSERT(m_ReceivedData.GetReadableSpace() == OldReadableSpace);
 			AString Hex;
 			CreateHexDump(Hex, AllData.data(), AllData.size(), 16);
-			m_CommLogFile.Printf("Incoming data, " SIZE_T_FMT " (0x" SIZE_T_FMT_HEX ") unparsed bytes already present in buffer:\n%s\n",
+			m_CommLogFile.Printf("Incoming data, %zu (0x%zx) unparsed bytes already present in buffer:\n%s\n",
 				AllData.size(), AllData.size(), Hex.c_str()
 			);
 		}
@@ -2006,14 +2021,14 @@ void cProtocol_1_8_0::AddReceivedData(const char * a_Data, size_t a_Size)
 		if (bb.GetReadableSpace() != 1)
 		{
 			// Read more or less than packet length, report as error
-			LOGWARNING("Protocol 1.8: Wrong number of bytes read for packet 0x%x, state %d. Read " SIZE_T_FMT " bytes, packet contained %u bytes",
+			LOGWARNING("Protocol 1.8: Wrong number of bytes read for packet 0x%x, state %d. Read %zu bytes, packet contained %u bytes",
 				PacketType, m_State, bb.GetUsedSpace() - bb.GetReadableSpace(), PacketLen
 			);
 
 			// Put a message in the comm log:
 			if (g_ShouldLogCommIn && m_CommLogFile.IsOpen())
 			{
-				m_CommLogFile.Printf("^^^^^^ Wrong number of bytes read for this packet (exp %d left, got " SIZE_T_FMT " left) ^^^^^^\n\n\n",
+				m_CommLogFile.Printf("^^^^^^ Wrong number of bytes read for this packet (exp %d left, got %zu left) ^^^^^^\n\n\n",
 					1, bb.GetReadableSpace()
 				);
 				m_CommLogFile.Flush();
@@ -2035,7 +2050,7 @@ void cProtocol_1_8_0::AddReceivedData(const char * a_Data, size_t a_Size)
 		ASSERT(m_ReceivedData.GetReadableSpace() == OldReadableSpace);
 		AString Hex;
 		CreateHexDump(Hex, AllData.data(), AllData.size(), 16);
-		m_CommLogFile.Printf("There are " SIZE_T_FMT " (0x" SIZE_T_FMT_HEX ") bytes of non-parse-able data left in the buffer:\n%s",
+		m_CommLogFile.Printf("There are %zu (0x%zx) bytes of non-parse-able data left in the buffer:\n%s",
 			m_ReceivedData.GetReadableSpace(), m_ReceivedData.GetReadableSpace(), Hex.c_str()
 		);
 		m_CommLogFile.Flush();
@@ -2327,13 +2342,21 @@ void cProtocol_1_8_0::HandlePacketBlockPlace(cByteBuffer & a_ByteBuffer)
 
 	HANDLE_READ(a_ByteBuffer, ReadBEInt8, Int8, Face);
 
-	cItem Item;
+	cItem Item;  // Ignored
 	ReadItem(a_ByteBuffer, Item, 3);
 
 	HANDLE_READ(a_ByteBuffer, ReadBEUInt8, UInt8, CursorX);
 	HANDLE_READ(a_ByteBuffer, ReadBEUInt8, UInt8, CursorY);
 	HANDLE_READ(a_ByteBuffer, ReadBEUInt8, UInt8, CursorZ);
-	m_Client->HandleRightClick(BlockX, BlockY, BlockZ, FaceIntToBlockFace(Face), CursorX, CursorY, CursorZ, m_Client->GetPlayer()->GetEquippedItem());
+	eBlockFace blockFace = FaceIntToBlockFace(Face);
+	if (blockFace == eBlockFace::BLOCK_FACE_NONE)
+	{
+		m_Client->HandleUseItem(eHand::hMain);
+	}
+	else
+	{
+		m_Client->HandleRightClick(BlockX, BlockY, BlockZ, blockFace, CursorX, CursorY, CursorZ, eHand::hMain);
+	}
 }
 
 
@@ -2428,6 +2451,7 @@ void cProtocol_1_8_0::HandlePacketEntityAction(cByteBuffer & a_ByteBuffer)
 		case 2: m_Client->HandleEntityLeaveBed(PlayerID);         break;  // Leave Bed
 		case 3: m_Client->HandleEntitySprinting(PlayerID, true);  break;  // Start sprinting
 		case 4: m_Client->HandleEntitySprinting(PlayerID, false); break;  // Stop sprinting
+		case 6: m_Client->HandleOpenHorseInventory(PlayerID);     break;  // Open horse inventory
 	}
 }
 
@@ -2831,7 +2855,7 @@ void cProtocol_1_8_0::SendData(const char * a_Data, size_t a_Size)
 		while (a_Size > 0)
 		{
 			size_t NumBytes = (a_Size > sizeof(Encrypted)) ? sizeof(Encrypted) : a_Size;
-			m_Encryptor.ProcessData(Encrypted, reinterpret_cast<Byte *>(const_cast<char*>(a_Data)), NumBytes);
+			m_Encryptor.ProcessData(Encrypted, reinterpret_cast<const Byte *>(a_Data), NumBytes);
 			m_Client->SendData(reinterpret_cast<const char *>(Encrypted), NumBytes);
 			a_Size -= NumBytes;
 			a_Data += NumBytes;
@@ -2890,7 +2914,7 @@ void cProtocol_1_8_0::ParseItemMetadata(cItem & a_Item, const AString & a_Metada
 	{
 		AString HexDump;
 		CreateHexDump(HexDump, a_Metadata.data(), std::max<size_t>(a_Metadata.size(), 1024), 16);
-		LOGWARNING("Cannot parse NBT item metadata: %s at (" SIZE_T_FMT " / " SIZE_T_FMT " bytes)\n%s",
+		LOGWARNING("Cannot parse NBT item metadata: %s at (%zu / %zu bytes)\n%s",
 			NBT.GetErrorCode().message().c_str(), NBT.GetErrorPos(), a_Metadata.size(), HexDump.c_str()
 		);
 		return;
@@ -3150,7 +3174,7 @@ void cProtocol_1_8_0::WriteBlockEntity(cPacketizer & a_Pkt, const cBlockEntity &
 	{
 		case E_BLOCK_BEACON:
 		{
-			auto & BeaconEntity = reinterpret_cast<const cBeaconEntity &>(a_BlockEntity);
+			auto & BeaconEntity = static_cast<const cBeaconEntity &>(a_BlockEntity);
 			Writer.AddInt("x",         BeaconEntity.GetPosX());
 			Writer.AddInt("y",         BeaconEntity.GetPosY());
 			Writer.AddInt("z",         BeaconEntity.GetPosZ());
@@ -3163,7 +3187,7 @@ void cProtocol_1_8_0::WriteBlockEntity(cPacketizer & a_Pkt, const cBlockEntity &
 
 		case E_BLOCK_COMMAND_BLOCK:
 		{
-			auto & CommandBlockEntity = reinterpret_cast<const cCommandBlockEntity &>(a_BlockEntity);
+			auto & CommandBlockEntity = static_cast<const cCommandBlockEntity &>(a_BlockEntity);
 			Writer.AddByte("TrackOutput", 1);  // Neither I nor the MC wiki has any idea about this
 			Writer.AddInt("SuccessCount", CommandBlockEntity.GetResult());
 			Writer.AddInt("x", CommandBlockEntity.GetPosX());
@@ -3184,7 +3208,7 @@ void cProtocol_1_8_0::WriteBlockEntity(cPacketizer & a_Pkt, const cBlockEntity &
 
 		case E_BLOCK_HEAD:
 		{
-			auto & MobHeadEntity = reinterpret_cast<const cMobHeadEntity &>(a_BlockEntity);
+			auto & MobHeadEntity = static_cast<const cMobHeadEntity &>(a_BlockEntity);
 			Writer.AddInt("x", MobHeadEntity.GetPosX());
 			Writer.AddInt("y", MobHeadEntity.GetPosY());
 			Writer.AddInt("z", MobHeadEntity.GetPosZ());
@@ -3210,7 +3234,7 @@ void cProtocol_1_8_0::WriteBlockEntity(cPacketizer & a_Pkt, const cBlockEntity &
 
 		case E_BLOCK_FLOWER_POT:
 		{
-			auto & FlowerPotEntity = reinterpret_cast<const cFlowerPotEntity &>(a_BlockEntity);
+			auto & FlowerPotEntity = static_cast<const cFlowerPotEntity &>(a_BlockEntity);
 			Writer.AddInt("x", FlowerPotEntity.GetPosX());
 			Writer.AddInt("y", FlowerPotEntity.GetPosY());
 			Writer.AddInt("z", FlowerPotEntity.GetPosZ());
@@ -3222,7 +3246,7 @@ void cProtocol_1_8_0::WriteBlockEntity(cPacketizer & a_Pkt, const cBlockEntity &
 
 		case E_BLOCK_MOB_SPAWNER:
 		{
-			auto & MobSpawnerEntity = reinterpret_cast<const cMobSpawnerEntity &>(a_BlockEntity);
+			auto & MobSpawnerEntity = static_cast<const cMobSpawnerEntity &>(a_BlockEntity);
 			Writer.AddInt("x", MobSpawnerEntity.GetPosX());
 			Writer.AddInt("y", MobSpawnerEntity.GetPosY());
 			Writer.AddInt("z", MobSpawnerEntity.GetPosZ());
@@ -3277,7 +3301,7 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 	{
 		case cEntity::etPlayer:
 		{
-			auto & Player = reinterpret_cast<const cPlayer &>(a_Entity);
+			auto & Player = static_cast<const cPlayer &>(a_Entity);
 
 			// Player health (not handled since players aren't monsters)
 			a_Pkt.WriteBEUInt8(0x66);
@@ -3292,7 +3316,7 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 		case cEntity::etPickup:
 		{
 			a_Pkt.WriteBEUInt8((5 << 5) | 10);  // Slot(5) + index 10
-			WriteItem(a_Pkt, reinterpret_cast<const cPickup &>(a_Entity).GetItem());
+			WriteItem(a_Pkt, static_cast<const cPickup &>(a_Entity).GetItem());
 			break;
 		}
 		case cEntity::etMinecart:
@@ -3306,8 +3330,8 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 			Health: 3 | 3 - (3 - 3) = 3
 			Health: 1 | 3 - (1 - 3) = 5
 			*/
-			auto & Minecart = reinterpret_cast<const cMinecart &>(a_Entity);
-			a_Pkt.WriteBEInt32((((a_Entity.GetMaxHealth() / 2) - (a_Entity.GetHealth() - (a_Entity.GetMaxHealth() / 2))) * Minecart.LastDamage()) * 4);
+			auto & Minecart = static_cast<const cMinecart &>(a_Entity);
+			a_Pkt.WriteBEInt32(static_cast<Int32>((((a_Entity.GetMaxHealth() / 2) - (a_Entity.GetHealth() - (a_Entity.GetMaxHealth() / 2))) * Minecart.LastDamage()) * 4));
 			a_Pkt.WriteBEUInt8(0x52);
 			a_Pkt.WriteBEInt32(1);  // Shaking direction, doesn't seem to affect anything
 			a_Pkt.WriteBEUInt8(0x73);
@@ -3315,7 +3339,7 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 
 			if (Minecart.GetPayload() == cMinecart::mpNone)
 			{
-				auto & RideableMinecart = reinterpret_cast<const cRideableMinecart &>(Minecart);
+				auto & RideableMinecart = static_cast<const cRideableMinecart &>(Minecart);
 				const cItem & MinecartContent = RideableMinecart.GetContent();
 				if (!MinecartContent.IsEmpty())
 				{
@@ -3332,26 +3356,26 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 			else if (Minecart.GetPayload() == cMinecart::mpFurnace)
 			{
 				a_Pkt.WriteBEUInt8(0x10);
-				a_Pkt.WriteBEUInt8(reinterpret_cast<const cMinecartWithFurnace &>(Minecart).IsFueled() ? 1 : 0);
+				a_Pkt.WriteBEUInt8(static_cast<const cMinecartWithFurnace &>(Minecart).IsFueled() ? 1 : 0);
 			}
 			break;
 		}  // case etMinecart
 
 		case cEntity::etProjectile:
 		{
-			auto & Projectile = reinterpret_cast<const cProjectileEntity &>(a_Entity);
+			auto & Projectile = static_cast<const cProjectileEntity &>(a_Entity);
 			switch (Projectile.GetProjectileKind())
 			{
 				case cProjectileEntity::pkArrow:
 				{
 					a_Pkt.WriteBEUInt8(0x10);
-					a_Pkt.WriteBEUInt8(reinterpret_cast<const cArrowEntity &>(Projectile).IsCritical() ? 1 : 0);
+					a_Pkt.WriteBEUInt8(static_cast<const cArrowEntity &>(Projectile).IsCritical() ? 1 : 0);
 					break;
 				}
 				case cProjectileEntity::pkFirework:
 				{
 					a_Pkt.WriteBEUInt8(0xa8);
-					WriteItem(a_Pkt, reinterpret_cast<const cFireworkEntity &>(Projectile).GetItem());
+					WriteItem(a_Pkt, static_cast<const cFireworkEntity &>(Projectile).GetItem());
 					break;
 				}
 				default:
@@ -3364,13 +3388,13 @@ void cProtocol_1_8_0::WriteEntityMetadata(cPacketizer & a_Pkt, const cEntity & a
 
 		case cEntity::etMonster:
 		{
-			WriteMobMetadata(a_Pkt, reinterpret_cast<const cMonster &>(a_Entity));
+			WriteMobMetadata(a_Pkt, static_cast<const cMonster &>(a_Entity));
 			break;
 		}
 
 		case cEntity::etItemFrame:
 		{
-			auto & Frame = reinterpret_cast<const cItemFrame &>(a_Entity);
+			auto & Frame = static_cast<const cItemFrame &>(a_Entity);
 			a_Pkt.WriteBEUInt8(0xa8);
 			WriteItem(a_Pkt, Frame.GetItem());
 			a_Pkt.WriteBEUInt8(0x09);
@@ -3408,15 +3432,31 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 	{
 		case mtBat:
 		{
-			auto & Bat = reinterpret_cast<const cBat &>(a_Mob);
+			auto & Bat = static_cast<const cBat &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x10);
 			a_Pkt.WriteBEUInt8(Bat.IsHanging() ? 1 : 0);
 			break;
 		}  // case mtBat
 
+		case mtChicken:
+		{
+			auto & Chicken = static_cast<const cChicken &>(a_Mob);
+			a_Pkt.WriteBEUInt8(0x0c);
+			a_Pkt.WriteBEInt8(Chicken.IsBaby() ? -1 : (Chicken.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
+			break;
+		}  // case mtChicken
+
+		case mtCow:
+		{
+			auto & Cow = static_cast<const cCow &>(a_Mob);
+			a_Pkt.WriteBEUInt8(0x0c);
+			a_Pkt.WriteBEInt8(Cow.IsBaby() ? -1 : (Cow.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
+			break;
+		}  // case mtCow
+
 		case mtCreeper:
 		{
-			auto & Creeper = reinterpret_cast<const cCreeper &>(a_Mob);
+			auto & Creeper = static_cast<const cCreeper &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x10);
 			a_Pkt.WriteBEUInt8(Creeper.IsBlowing() ? 1 : 255);
 			a_Pkt.WriteBEUInt8(0x11);
@@ -3426,7 +3466,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtEnderman:
 		{
-			auto & Enderman = reinterpret_cast<const cEnderman &>(a_Mob);
+			auto & Enderman = static_cast<const cEnderman &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x30);
 			a_Pkt.WriteBEInt16(static_cast<Byte>(Enderman.GetCarriedBlock()));
 			a_Pkt.WriteBEUInt8(0x11);
@@ -3438,7 +3478,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtGhast:
 		{
-			auto & Ghast = reinterpret_cast<const cGhast &>(a_Mob);
+			auto & Ghast = static_cast<const cGhast &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x10);
 			a_Pkt.WriteBEUInt8(Ghast.IsCharging());
 			break;
@@ -3446,7 +3486,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtHorse:
 		{
-			auto & Horse = reinterpret_cast<const cHorse &>(a_Mob);
+			auto & Horse = static_cast<const cHorse &>(a_Mob);
 			int Flags = 0;
 			if (Horse.IsTame())
 			{
@@ -3490,7 +3530,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtMagmaCube:
 		{
-			auto & MagmaCube = reinterpret_cast<const cMagmaCube &>(a_Mob);
+			auto & MagmaCube = static_cast<const cMagmaCube &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x10);
 			a_Pkt.WriteBEUInt8(static_cast<UInt8>(MagmaCube.GetSize()));
 			break;
@@ -3498,31 +3538,15 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtOcelot:
 		{
-			auto & Ocelot = reinterpret_cast<const cOcelot &>(a_Mob);
+			auto & Ocelot = static_cast<const cOcelot &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0c);
 			a_Pkt.WriteBEInt8(Ocelot.IsBaby() ? -1 : (Ocelot.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
 			break;
 		}  // case mtOcelot
 
-		case mtCow:
-		{
-			auto & Cow = reinterpret_cast<const cCow &>(a_Mob);
-			a_Pkt.WriteBEUInt8(0x0c);
-			a_Pkt.WriteBEInt8(Cow.IsBaby() ? -1 : (Cow.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
-			break;
-		}  // case mtCow
-
-		case mtChicken:
-		{
-			auto & Chicken = reinterpret_cast<const cChicken &>(a_Mob);
-			a_Pkt.WriteBEUInt8(0x0c);
-			a_Pkt.WriteBEInt8(Chicken.IsBaby() ? -1 : (Chicken.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
-			break;
-		}  // case mtChicken
-
 		case mtPig:
 		{
-			auto & Pig = reinterpret_cast<const cPig &>(a_Mob);
+			auto & Pig = static_cast<const cPig &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0c);
 			a_Pkt.WriteBEInt8(Pig.IsBaby() ? -1 : (Pig.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
 			a_Pkt.WriteBEUInt8(0x10);
@@ -3532,7 +3556,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtSheep:
 		{
-			auto & Sheep = reinterpret_cast<const cSheep &>(a_Mob);
+			auto & Sheep = static_cast<const cSheep &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0c);
 			a_Pkt.WriteBEInt8(Sheep.IsBaby() ? -1 : (Sheep.GetBehaviorBreeder()->IsInLoveCooldown() ? 1 : 0));
 
@@ -3549,7 +3573,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtRabbit:
 		{
-			auto & Rabbit = reinterpret_cast<const cRabbit &>(a_Mob);
+			auto & Rabbit = static_cast<const cRabbit &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x12);
 			a_Pkt.WriteBEUInt8(static_cast<UInt8>(Rabbit.GetRabbitType()));
 			a_Pkt.WriteBEUInt8(0x0c);
@@ -3559,7 +3583,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtSkeleton:
 		{
-			auto & Skeleton = reinterpret_cast<const cSkeleton &>(a_Mob);
+			auto & Skeleton = static_cast<const cSkeleton &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0d);
 			a_Pkt.WriteBEUInt8(Skeleton.IsWither() ? 1 : 0);
 			break;
@@ -3567,7 +3591,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtSlime:
 		{
-			auto & Slime = reinterpret_cast<const cSlime &>(a_Mob);
+			auto & Slime = static_cast<const cSlime &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x10);
 			a_Pkt.WriteBEUInt8(static_cast<UInt8>(Slime.GetSize()));
 			break;
@@ -3575,7 +3599,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtVillager:
 		{
-			auto & Villager = reinterpret_cast<const cVillager &>(a_Mob);
+			auto & Villager = static_cast<const cVillager &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x50);
 			a_Pkt.WriteBEInt32(Villager.GetVilType());
 			a_Pkt.WriteBEUInt8(0x0c);
@@ -3585,16 +3609,16 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtWitch:
 		{
-			auto & Witch = reinterpret_cast<const cWitch &>(a_Mob);
+			auto & Witch = static_cast<const cWitch &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x15);
-			// a_Pkt.WriteBEUInt8(Witch.IsAngry() ? 1 : 0); // mobTodo
+			// a_Pkt.WriteBEUInt8(Witch.IsAngry() ? 1 : 0);  // mobTodo
 			a_Pkt.WriteBEUInt8(0);
 			break;
 		}  // case mtWitch
 
 		case mtWither:
 		{
-			auto & Wither = reinterpret_cast<const cWither &>(a_Mob);
+			auto & Wither = static_cast<const cWither &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x54);  // Int at index 20
 			a_Pkt.WriteBEInt32(static_cast<Int32>(Wither.GetWitherInvulnerableTicks()));
 			a_Pkt.WriteBEUInt8(0x66);  // Float at index 6
@@ -3604,7 +3628,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtWolf:
 		{
-			auto & Wolf = reinterpret_cast<const cWolf &>(a_Mob);
+			auto & Wolf = static_cast<const cWolf &>(a_Mob);
 			Byte WolfStatus = 0;
 			if (Wolf.IsSitting())
 			{
@@ -3634,7 +3658,7 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtZombie:
 		{
-			auto & Zombie = reinterpret_cast<const cZombie &>(a_Mob);
+			auto & Zombie = static_cast<const cZombie &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0c);
 			a_Pkt.WriteBEInt8(Zombie.IsBaby() ? 1 : -1);
 			a_Pkt.WriteBEUInt8(0x0d);
@@ -3646,11 +3670,13 @@ void cProtocol_1_8_0::WriteMobMetadata(cPacketizer & a_Pkt, const cMonster & a_M
 
 		case mtZombiePigman:
 		{
-			auto & ZombiePigman = reinterpret_cast<const cZombiePigman &>(a_Mob);
+			auto & ZombiePigman = static_cast<const cZombiePigman &>(a_Mob);
 			a_Pkt.WriteBEUInt8(0x0c);
 			a_Pkt.WriteBEInt8(ZombiePigman.IsBaby() ? 1 : -1);
 			break;
 		}  // case mtZombiePigman
+
+		default: break;
 	}  // switch (a_Mob.GetType())
 }
 

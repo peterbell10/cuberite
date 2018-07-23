@@ -30,13 +30,8 @@ AString cObjective::TypeToString(eType a_Type)
 		case otStatBlockMine:      return "stat.mineBlock";
 		case otStatEntityKill:     return "stat.killEntity";
 		case otStatEntityKilledBy: return "stat.entityKilledBy";
-
-		// clang optimisises this line away then warns that it has done so.
-		#if !defined(__clang__)
-		default: return "";
-		#endif
 	}
-
+	UNREACHABLE("Unsupported objective type");
 }
 
 
@@ -487,7 +482,7 @@ cObjective * cScoreboard::GetObjectiveIn(eDisplaySlot a_Slot)
 
 
 
-bool cScoreboard::ForEachObjectiveWith(cObjective::eType a_Type, cObjectiveCallback & a_Callback)
+bool cScoreboard::ForEachObjectiveWith(cObjective::eType a_Type, cObjectiveCallback a_Callback)
 {
 	cCSLock Lock(m_CSObjectives);
 
@@ -496,7 +491,7 @@ bool cScoreboard::ForEachObjectiveWith(cObjective::eType a_Type, cObjectiveCallb
 		if (it->second.GetType() == a_Type)
 		{
 			// Call callback
-			if (a_Callback.Item(&it->second))
+			if (a_Callback(it->second))
 			{
 				return false;
 			}
@@ -509,14 +504,14 @@ bool cScoreboard::ForEachObjectiveWith(cObjective::eType a_Type, cObjectiveCallb
 
 
 
-bool cScoreboard::ForEachObjective(cObjectiveCallback & a_Callback)
+bool cScoreboard::ForEachObjective(cObjectiveCallback a_Callback)
 {
 	cCSLock Lock(m_CSObjectives);
 
 	for (cObjectiveMap::iterator it = m_Objectives.begin(); it != m_Objectives.end(); ++it)
 	{
 		// Call callback
-		if (a_Callback.Item(&it->second))
+		if (a_Callback(it->second))
 		{
 			return false;
 		}
@@ -528,14 +523,14 @@ bool cScoreboard::ForEachObjective(cObjectiveCallback & a_Callback)
 
 
 
-bool cScoreboard::ForEachTeam(cTeamCallback & a_Callback)
+bool cScoreboard::ForEachTeam(cTeamCallback a_Callback)
 {
 	cCSLock Lock(m_CSTeams);
 
 	for (cTeamMap::iterator it = m_Teams.begin(); it != m_Teams.end(); ++it)
 	{
 		// Call callback
-		if (a_Callback.Item(&it->second))
+		if (a_Callback(it->second))
 		{
 			return false;
 		}

@@ -46,6 +46,8 @@ void cExpOrb::SpawnOn(cClientHandle & a_Client)
 
 void cExpOrb::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 {
+	DetectCacti();
+
 	// Check player proximity no more than twice per second
 	if ((m_TicksAlive % 10) == 0)
 	{
@@ -61,7 +63,7 @@ void cExpOrb::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 				LOGD("Player %s picked up an ExpOrb. His reward is %i", a_ClosestPlayer->GetName().c_str(), m_Reward);
 				a_ClosestPlayer->DeltaExperience(m_Reward);
 
-				m_World->BroadcastSoundEffect("entity.experience_orb.pickup", GetPosX(), GetPosY(), GetPosZ(), 0.5f, (0.75f + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
+				m_World->BroadcastSoundEffect("entity.experience_orb.pickup", GetPosition(), 0.5f, (0.75f + (static_cast<float>((GetUniqueID() * 23) % 32)) / 64));
 
 				Destroy(true);
 				return;
@@ -78,4 +80,15 @@ void cExpOrb::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 	{
 		Destroy(true);
 	}
+}
+
+bool cExpOrb::DoTakeDamage(TakeDamageInfo & a_TDI)
+{
+	if (a_TDI.DamageType == dtCactusContact)
+	{
+		Destroy(true);
+		return true;
+	}
+
+	return super::DoTakeDamage(a_TDI);
 }

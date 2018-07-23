@@ -25,11 +25,6 @@
 
 
 
-// Ticks to wait to do leash calculations
-#define LEASH_ACTIONS_TICK_STEP 10
-
-
-
 /** Map for eType <-> string
 Needs to be alpha-sorted by the strings, because binary search is used in StringToMobType()
 The strings need to be lowercase (for more efficient comparisons in StringToMobType())
@@ -201,7 +196,7 @@ void cMonster::MoveToWayPoint(cChunk & a_Chunk)
 		{
 			if (
 				(IsOnGround() && (GetSpeed().SqrLength() <= 0.5)) ||  // If walking on the ground, we need to slow down first, otherwise we miss the jump
-				IsSwimming()
+				IsInWater()
 			)
 			{
 				m_bOnGround = false;
@@ -228,7 +223,7 @@ void cMonster::MoveToWayPoint(cChunk & a_Chunk)
 		{
 			Distance *= 2.5f;
 		}
-		else if (IsSwimming())
+		else if (IsInWater())
 		{
 			Distance *= 1.3f;
 		}
@@ -246,23 +241,7 @@ void cMonster::MoveToWayPoint(cChunk & a_Chunk)
 		AddSpeedX(Distance.x);
 		AddSpeedZ(Distance.z);
 	}
-
-	// Speed up leashed mobs getting far from player
-	if (IsLeashed() && GetLeashedTo()->IsPlayer())
-	{
-		Distance = GetLeashedTo()->GetPosition() - GetPosition();
-		Distance.Normalize();
-		AddSpeedX(Distance.x);
-		AddSpeedZ(Distance.z);
-	}
-
 }
-
-
-
-
-
-
 
 
 
@@ -355,7 +334,7 @@ void cMonster::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 					}
 				}
 			}
-			ASSERT(m_NewTickControllingBehavior != nullptr); // it's not OK if no one asks for control
+			ASSERT(m_NewTickControllingBehavior != nullptr);  // it's not OK if no one asks for control
 
 			// STEP 2: decide whether to tick or do behavior swapping
 
@@ -479,12 +458,7 @@ void cMonster::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 	SetPitchAndYawFromDestination(a_IsFollowingPath);
 
 	// Leash calculations
-	if ((m_TickControllingBehaviorState == Normal) &&
-			((m_TicksAlive % LEASH_ACTIONS_TICK_STEP) == 0)
-	)
-	{
-		CalcLeashActions();
-	}
+	CalcLeashActions(a_Dt);
 
 	BroadcastMovementUpdate();
 
@@ -508,7 +482,7 @@ void cMonster::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 
 
 
-void cMonster::CalcLeashActions()
+void cMonster::CalcLeashActions(std::chrono::milliseconds a_Dt)
 {
 	// This mob just spotted in the world and [m_LeashToPos not null] shows that should be leashed to a leash knot at m_LeashToPos.
 	// This keeps trying until knot is found. Leash knot may be in a different chunk that needn't or can't be loaded yet.
@@ -521,19 +495,54 @@ void cMonster::CalcLeashActions()
 			SetLeashToPos(nullptr);
 		}
 	}
-	else if (IsLeashed())  // Mob is already leashed to an entity: follow it.
-	{
-		// TODO: leashed mobs in vanilla can move around up to 5 blocks distance from leash origin
-		MoveToPosition(m_LeashedTo->GetPosition());
 
-		// If distance to target > 10 break leash
-		Vector3f a_Distance(m_LeashedTo->GetPosition() - GetPosition());
-		double Distance(a_Distance.Length());
-		if (Distance > 10.0)
+	if (!IsLeashed())
+	{
+		return;
+	}
+
+	static const double CloseFollowDistance = 1.8;   // The closest the mob will path towards the leashed to entity
+	static const double LeashNaturalLength  = 5.0;   // The closest the mob is actively pulled towards the entity
+	static const double LeashMaximumLength  = 10.0;  // Length where the leash breaks
+	static const double LeashSpringConstant = 20.0;  // How stiff the leash is
+
+	const auto LeashedToPos = m_LeashedTo->GetPosition();
+	const auto Displacement = LeashedToPos - GetPosition();
+	const auto Distance = Displacement.Length();
+	const auto Direction = Displacement.NormalizeCopy();
+
+	// If the leash is over-extended, break the leash:
+	if (Distance > LeashMaximumLength)
+	{
+		LOGD("Leash broken (distance)");
+		Unleash(false);
+		return;
+	}
+
+	// If the mob isn't following close enough, pull the mob towards the leashed to entity:
+	if (Distance > LeashNaturalLength)
+	{
+		// Accelerate monster towards the leashed to entity:
+		const auto Extension = Distance - LeashNaturalLength;
+		auto Acceleration = Direction * (Extension * LeashSpringConstant);
+
+		// Stop mobs from floating up when on the ground
+		if (IsOnGround() && (Acceleration.y < std::abs(GetGravity())))
 		{
-			LOGD("Leash broken (distance)");
-			Unleash(false);
+			Acceleration.y = 0.0;
 		}
+
+		// Apply the acceleration
+		using namespace std::chrono;
+		AddSpeed(Acceleration * duration_cast<duration<double>>(a_Dt).count());
+	}
+
+	// Passively follow the leashed to entity:
+	if (Distance > CloseFollowDistance)
+	{
+		const Vector3d TargetBlock((LeashedToPos - Direction * CloseFollowDistance).Floor());
+		// Move to centre of target block face
+		MoveToPosition(TargetBlock + Vector3d{ 0.5, 0.0, 0.5 });
 	}
 }
 
@@ -645,7 +654,7 @@ bool cMonster::DoTakeDamage(TakeDamageInfo & a_TDI)
 
 	if (!m_SoundHurt.empty() && (m_Health > 0))
 	{
-		m_World->BroadcastSoundEffect(m_SoundHurt, GetPosX(), GetPosY(), GetPosZ(), 1.0f, 0.8f);
+		m_World->BroadcastSoundEffect(m_SoundHurt, GetPosition(), 1.0f, 0.8f);
 	}
 
 	for (cBehavior * Behavior : m_AttachedDoTakeDamageBehaviors)
@@ -668,7 +677,7 @@ void cMonster::KilledBy(TakeDamageInfo & a_TDI)
 	super::KilledBy(a_TDI);
 	if (m_SoundHurt != "")
 	{
-		m_World->BroadcastSoundEffect(m_SoundDeath, GetPosX(), GetPosY(), GetPosZ(), 1.0f, 0.8f);
+		m_World->BroadcastSoundEffect(m_SoundDeath, GetPosition(), 1.0f, 0.8f);
 	}
 	int Reward;
 	switch (m_MobType)
@@ -973,10 +982,12 @@ cMonster::eFamily cMonster::FamilyFromType(eMonsterType a_Type)
 		case mtZombie:       return mfHostile;
 		case mtZombiePigman: return mfHostile;
 
-		case mtInvalidType:  break;
+		default:
+		{
+			ASSERT(!"Unhandled mob type");
+			return mfUnhandled;
+		}
 	}
-	ASSERT(!"Unhandled mob type");
-	return mfUnhandled;
 }
 
 
@@ -992,10 +1003,12 @@ int cMonster::GetSpawnDelay(cMonster::eFamily a_MobFamily)
 		case mfAmbient:   return 40;
 		case mfWater:     return 400;
 		case mfNoSpawn:   return -1;
-		case mfUnhandled: break;
+		default:
+		{
+			ASSERT(!"Unhandled mob family");
+			return -1;
+		}
 	}
-	ASSERT(!"Unhandled mob family");
-	return -1;
 }
 
 
@@ -1029,7 +1042,7 @@ void cMonster::SetLookingAt(cPawn * a_NewTarget)
 		// Notify the new target that we are now targeting it.
 		m_Target->TargetingMe(this);
 		m_WasLastTargetAPlayer = m_Target->IsPlayer();
-	}*/
+	} */
 
 }
 

@@ -116,15 +116,14 @@ public:
 
 	inline static Vector3i AbsoluteToRelative(Vector3i a_BlockPosition)
 	{
-		int ChunkX, ChunkZ;
-		BlockToChunk(a_BlockPosition.x, a_BlockPosition.z, ChunkX, ChunkZ);
+		cChunkCoords ChunckPos = BlockToChunk(a_BlockPosition);
 
-		return {a_BlockPosition.x - ChunkX * Width, a_BlockPosition.y, a_BlockPosition.z - ChunkZ * Width};
+		return {a_BlockPosition.x - ChunckPos.m_ChunkX * Width, a_BlockPosition.y, a_BlockPosition.z - ChunckPos.m_ChunkZ * Width};
 	}
 
-	inline static Vector3i AbsoluteToRelative(Vector3i a_BlockPosition, int a_ChunkX, int a_ChunkZ)
+	inline static Vector3i AbsoluteToRelative(Vector3i a_BlockPosition, cChunkCoords a_ChunkPos)
 	{
-		return {a_BlockPosition.x - a_ChunkX * Width, a_BlockPosition.y, a_BlockPosition.z - a_ChunkZ * Width};
+		return {a_BlockPosition.x - a_ChunkPos.m_ChunkX * Width, a_BlockPosition.y, a_BlockPosition.z - a_ChunkPos.m_ChunkZ * Width};
 	}
 
 	/** Converts relative block coordinates into absolute coordinates with a known chunk location */
@@ -143,6 +142,16 @@ public:
 	inline static bool IsValidWidth(int a_Width)
 	{
 		return ((a_Width >= 0) && (a_Width < Width));
+	}
+
+	/** Validates a chunk relative coordinate. Returns false if the coordiante is out of bounds for a chunk. */
+	inline static bool IsValidRelPos(Vector3i a_RelPos)
+	{
+		return (
+			IsValidWidth(a_RelPos.x) &&
+			IsValidHeight(a_RelPos.y) &&
+			IsValidWidth(a_RelPos.z)
+		);
 	}
 
 	/** Converts absolute block coords to chunk coords: */

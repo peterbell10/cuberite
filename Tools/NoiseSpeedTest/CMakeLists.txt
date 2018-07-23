@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.0.2)
 project (NoiseSpeedTest)
 
 include(../../SetFlags.cmake)
@@ -48,6 +49,7 @@ set(SOURCES
 set(HEADERS
 	NoiseSpeedTest.h
 	Globals.h
+	SimplexNoise.h
 )
 
 source_group("" FILES ${SOURCES} ${HEADERS})
@@ -58,6 +60,8 @@ add_executable(NoiseSpeedTest
 	${SHARED_SRC}
 	${SHARED_HDR}
 )
+
+target_link_libraries(NoiseSpeedTest fmt::fmt)
 
 set_target_properties(
 	NoiseSpeedTest

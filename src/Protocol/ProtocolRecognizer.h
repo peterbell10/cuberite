@@ -19,8 +19,8 @@
 
 // Adjust these if a new protocol is added or an old one is removed:
 #define MCS_CLIENT_VERSIONS "1.8.x, 1.9.x, 1.10.x, 1.11.x, 1.12.x"
-#define MCS_PROTOCOL_VERSIONS "47, 107, 108, 109, 110, 210, 315, 316, 335, 338"
-#define MCS_LATEST_PROTOCOL_VERSION 338
+#define MCS_PROTOCOL_VERSIONS "47, 107, 108, 109, 110, 210, 315, 316, 335, 338, 340"
+#define MCS_LATEST_PROTOCOL_VERSION 340
 
 
 
@@ -44,7 +44,8 @@ public:
 		PROTO_VERSION_1_11_1 = 316,
 		PROTO_VERSION_1_12   = 335,
 		PROTO_VERSION_1_12_1 = 338,
-	} ;
+		PROTO_VERSION_1_12_2 = 340,
+	};
 
 	cProtocolRecognizer(cClientHandle * a_Client);
 	virtual ~cProtocolRecognizer() override;
@@ -84,6 +85,7 @@ public:
 	virtual void SendExplosion                  (double a_BlockX, double a_BlockY, double a_BlockZ, float a_Radius, const cVector3iArray & a_BlocksAffected, const Vector3d & a_PlayerMotion) override;
 	virtual void SendGameMode                   (eGameMode a_GameMode) override;
 	virtual void SendHealth                     (void) override;
+	virtual void SendHeldItemChange             (int a_ItemIndex) override;
 	virtual void SendHideTitle                  (void) override;
 	virtual void SendInventorySlot              (char a_WindowID, short a_SlotNum, const cItem & a_Item) override;
 	virtual void SendKeepAlive                  (UInt32 a_PingID) override;

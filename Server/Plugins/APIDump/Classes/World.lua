@@ -51,6 +51,34 @@ return
 				Params =
 				{
 					{
+						Name = "BlockPos",
+						Type = "Vector3i",
+					},
+					{
+						Name = "ActionByte1",
+						Type = "number",
+					},
+					{
+						Name = "ActionByte2",
+						Type = "number",
+					},
+					{
+						Name = "BlockType",
+						Type = "number",
+					},
+					{
+						Name = "ExcludeClient",
+						Type = "cClientHandle",
+						IsOptional = true,
+					},
+				},
+				Notes = "Broadcasts the BlockAction packet to all clients who have the appropriate chunk loaded (except ExcludeClient). The contents of the packet are specified by the parameters for the call, the blocktype needn't match the actual block that is present in the world data at the specified location.",
+			},
+			BroadcastBlockAction =
+			{
+				Params =
+				{
+					{
 						Name = "BlockX",
 						Type = "number",
 					},
@@ -80,7 +108,7 @@ return
 						IsOptional = true,
 					},
 				},
-				Notes = "Broadcasts the BlockAction packet to all clients who have the appropriate chunk loaded (except ExcludeClient). The contents of the packet are specified by the parameters for the call, the blocktype needn't match the actual block that is present in the world data at the specified location.",
+				Notes = "Broadcasts the BlockAction packet to all clients who have the appropriate chunk loaded (except ExcludeClient). The contents of the packet are specified by the parameters for the call, the blocktype needn't match the actual block that is present in the world data at the specified location. (DEPRECATED)",
 			},
 			BroadcastChat =
 			{
@@ -276,6 +304,34 @@ return
 						Type = "string",
 					},
 					{
+						Name = "Position",
+						Type = "Vector3d",
+					},
+					{
+						Name = "Volume",
+						Type = "number",
+					},
+					{
+						Name = "Pitch",
+						Type = "number",
+					},
+					{
+						Name = "ExcludeClient",
+						Type = "cClientHandle",
+						IsOptional = true,
+					},
+				},
+				Notes = "Sends the specified sound effect to all players in this world, except the optional ExceptClient",
+			},
+			BroadcastSoundEffect =
+			{
+				Params =
+				{
+					{
+						Name = "SoundName",
+						Type = "string",
+					},
+					{
 						Name = "X",
 						Type = "number",
 					},
@@ -301,7 +357,7 @@ return
 						IsOptional = true,
 					},
 				},
-				Notes = "Sends the specified sound effect to all players in this world, except the optional ExceptClient",
+				Notes = "Sends the specified sound effect to all players in this world, except the optional ExceptClient (DEPRECATED, use vector-parametered version instead)",
 			},
 			BroadcastSoundParticleEffect =
 			{
@@ -340,6 +396,17 @@ return
 				Params =
 				{
 					{
+						Name = "Position",
+						Type = "Vector3d",
+					},
+				},
+				Notes = "Creates a thunderbolt at the specified coords",
+			},
+			CastThunderbolt =
+			{
+				Params =
+				{
+					{
 						Name = "X",
 						Type = "number",
 					},
@@ -352,7 +419,7 @@ return
 						Type = "number",
 					},
 				},
-				Notes = "Creates a thunderbolt at the specified coords",
+				Notes = "Creates a thunderbolt at the specified coords (DEPRECATED, use vector-parametered version instead)",
 			},
 			ChangeWeather =
 			{
@@ -2170,7 +2237,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the current world is raining (no thunderstorm).",
+				Notes = "Returns true if the current weather is rainy.",
 			},
 			IsWeatherRainAt =
 			{
@@ -2191,7 +2258,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the specified location is raining (takes biomes into account - it never rains in a desert).",
+				Notes = "Returns true if it is rainy at the specified location. This takes into account biomes.",
 			},
 			IsWeatherStorm =
 			{
@@ -2201,7 +2268,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the current world is stormy.",
+				Notes = "Returns true if the current weather is stormy.",
 			},
 			IsWeatherStormAt =
 			{
@@ -2222,7 +2289,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the specified location is stormy (takes biomes into account - no storm in a desert).",
+				Notes = "Returns true if it is stormy at the specified location. This takes into account biomes.",
 			},
 			IsWeatherSunny =
 			{
@@ -2253,7 +2320,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the current weather is sunny at the specified location (takes into account biomes).",
+				Notes = "Returns true if it is sunny at the specified location. This takes into account biomes.",
 			},
 			IsWeatherWet =
 			{
@@ -2263,7 +2330,7 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the current world has any precipitation (rain or storm).",
+				Notes = "Returns true if the world currently has any precipitation - rain, storm or snow.",
 			},
 			IsWeatherWetAt =
 			{
@@ -2284,7 +2351,24 @@ function OnAllChunksAvailable()</pre> All return values from the callbacks are i
 						Type = "boolean",
 					},
 				},
-				Notes = "Returns true if the specified location has any precipitation (rain or storm) (takes biomes into account, deserts are never wet).",
+				Notes = "Returns true if it is raining or storming at the specified location. This takes into account biomes.",
+			},
+			IsWeatherWetAtXYZ =
+			{
+				Params =
+				{
+					{
+						Name = "Pos",
+						Type = "Vector3i",
+					},
+				},
+				Returns =
+				{
+					{
+						Type = "boolean",
+					},
+				},
+				Notes = "Returns true if the specified location has wet weather (rain or storm), using the same logic as IsWeatherWetAt, except that any rain-blocking blocks above the specified position will block the precipitation and this function will return false.",
 			},
 			PrepareChunk =
 			{
@@ -3570,4 +3654,3 @@ World:ForEachEntity(
 		},
 	},
 }
-
