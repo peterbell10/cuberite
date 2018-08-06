@@ -742,7 +742,7 @@ void cMonster::KilledBy(TakeDamageInfo & a_TDI)
 	}
 	if ((a_TDI.Attacker != nullptr) && (!IsBaby()))
 	{
-		m_World->SpawnExperienceOrb(GetPosX(), GetPosY(), GetPosZ(), Reward);
+		m_World->SpawnSplitExperienceOrbs(GetPosX(), GetPosY(), GetPosZ(), Reward);
 	}
 	m_DestroyTimer = std::chrono::milliseconds(0);
 }
@@ -1015,8 +1015,6 @@ int cMonster::GetSpawnDelay(cMonster::eFamily a_MobFamily)
 
 
 
-
-
 void cMonster::SetLookingAt(cPawn * a_NewTarget)
 {
 	m_LookingAt.SetPointer(a_NewTarget);
@@ -1045,6 +1043,7 @@ void cMonster::SetLookingAt(cPawn * a_NewTarget)
 	} */
 
 }
+
 
 
 
@@ -1118,9 +1117,14 @@ cPlayer * cMonster::GetNearestPlayer()
 {
 	if (m_NearestPlayerIsStale)
 	{
-		// TODO: Rewrite this to use cWorld's DoWithPlayers()
-		m_NearestPlayer = GetWorld()->FindClosestPlayer(GetPosition(), static_cast<float>(GetSightDistance()));
 		m_NearestPlayerIsStale = false;
+		m_NearestPlayer = nullptr;
+		GetWorld()->DoWithNearestPlayer(GetPosition(), GetSightDistance(), [this](cPlayer & a_Player)
+			{
+				m_NearestPlayer = &a_Player;
+				return true;
+			}
+		);
 	}
 	if ((m_NearestPlayer != nullptr) && (!m_NearestPlayer->IsTicking()))
 	{
@@ -1320,6 +1324,8 @@ void cMonster::AddRandomWeaponDropItem(cItems & a_Drops, unsigned int a_LootingL
 
 
 
+
+
 void cMonster::AttachPreTickBehavior(cBehavior * a_Behavior)
 {
 	ASSERT(a_Behavior != nullptr);
@@ -1374,6 +1380,7 @@ void cMonster::AttachDoTakeDamageBehavior(cBehavior * a_Behavior)
 {
 	m_AttachedDoTakeDamageBehaviors.push_back(a_Behavior);
 }
+
 
 
 

@@ -185,11 +185,13 @@ void cEntity::WrapHeadYaw(void)
 
 
 
+
 void cEntity::WrapRotation(void)
 {
 	m_Rot.x = NormalizeAngleDegrees(m_Rot.x);
 	m_Rot.y = NormalizeAngleDegrees(m_Rot.y);
 }
+
 
 
 
@@ -208,15 +210,6 @@ void cEntity::WrapSpeed(void)
 void cEntity::SetParentChunk(cChunk * a_Chunk)
 {
 	m_ParentChunk = a_Chunk;
-}
-
-
-
-
-
-cChunk * cEntity::GetParentChunk()
-{
-	return m_ParentChunk;
 }
 
 
@@ -269,7 +262,6 @@ void cEntity::DestroyNoScheduling(bool a_ShouldBroadcast)
 
 	Destroyed();
 }
-
 
 
 
@@ -610,6 +602,7 @@ int cEntity::GetRawDamageAgainst(const cEntity & a_Receiver)
 
 
 
+
 void cEntity::ApplyArmorDamage(int DamageBlocked)
 {
 	// cEntities don't necessarily have armor to damage.
@@ -701,7 +694,6 @@ int cEntity::GetEnchantmentCoverAgainst(const cEntity * a_Attacker, eDamageType 
 
 
 
-
 float cEntity::GetEnchantmentBlastKnockbackReduction()
 {
 	UInt32 MaxLevel = 0;
@@ -722,7 +714,6 @@ float cEntity::GetEnchantmentBlastKnockbackReduction()
 	MaxLevel = std::min<UInt32>(MaxLevel, 4);
 	return MaxLevel * 0.15f;
 }
-
 
 
 
@@ -1067,51 +1058,23 @@ void cEntity::HandlePhysics(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 	}
 
 	// Get water direction
-	Direction WaterDir = m_World->GetWaterSimulator()->GetFlowingDirection(BlockX, BlockY, BlockZ);
+	Vector3f WaterDir = m_World->GetWaterSimulator()->GetFlowingDirection(BlockX, BlockY, BlockZ);
 
 	m_WaterSpeed *= 0.9;  // Reduce speed each tick
 
-	switch (WaterDir)
-	{
-		case X_PLUS:
+	auto AdjustSpeed = [](double & a_WaterSpeed, float a_WaterDir)
 		{
-			m_WaterSpeed.x = 0.2f;
-			m_bOnGround = false;
-			break;
-		}
-		case X_MINUS:
-		{
-			m_WaterSpeed.x = -0.2f;
-			m_bOnGround = false;
-			break;
-		}
-		case Z_PLUS:
-		{
-			m_WaterSpeed.z = 0.2f;
-			m_bOnGround = false;
-			break;
-		}
-		case Z_MINUS:
-		{
-			m_WaterSpeed.z = -0.2f;
-			m_bOnGround = false;
-			break;
-		}
-		default:
-		{
-			break;
-		}
-	}
-
-	if (fabs(m_WaterSpeed.x) < 0.05)
-	{
-		m_WaterSpeed.x = 0;
-	}
-
-	if (fabs(m_WaterSpeed.z) < 0.05)
-	{
-		m_WaterSpeed.z = 0;
-	}
+			if (std::abs(a_WaterDir) > (0.05f / 0.4f))
+			{
+				a_WaterSpeed = 0.4 * a_WaterDir;
+			}
+			else if (std::abs(a_WaterSpeed) < 0.05)
+			{
+				a_WaterSpeed = 0.0;
+			}
+		};
+	AdjustSpeed(m_WaterSpeed.x, WaterDir.x);
+	AdjustSpeed(m_WaterSpeed.z, WaterDir.z);
 
 	NextSpeed += m_WaterSpeed;
 
@@ -1124,35 +1087,49 @@ void cEntity::HandlePhysics(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 		auto isHit = cLineBlockTracer::FirstSolidHitTrace(*GetWorld(), NextPos, wantNextPos, HitCoords, HitBlockCoords, HitBlockFace);
 		if (isHit)
 		{
-			// Set our position to where the block was hit, minus a bit:
-			// TODO: The real entity's m_Width should be taken into account here
-			NextPos = HitCoords - NextSpeed.NormalizeCopy() * 0.1;
-			if (HitBlockFace == BLOCK_FACE_YP)
-			{
-				// We hit the ground, adjust the position to the top of the block:
-				m_bOnGround = true;
-				NextPos.y = HitBlockCoords.y + 1;
-			}
+			// Set our position to where the block was hit:
+			NextPos = HitCoords;
 
-			// Avoid movement in the direction of the blockface that has been hit:
+			// Avoid movement in the direction of the blockface that has been hit and correct for collision box:
+			double HalfWidth = GetWidth() / 2.0;
 			switch (HitBlockFace)
 			{
 				case BLOCK_FACE_XM:
+				{
+					NextSpeed.x = 0;
+					NextPos.x -= HalfWidth;
+					break;
+				}
 				case BLOCK_FACE_XP:
 				{
 					NextSpeed.x = 0;
+					NextPos.x += HalfWidth;
 					break;
 				}
 				case BLOCK_FACE_YM:
+				{
+					NextSpeed.y = 0;
+					NextPos.y -= GetHeight();
+					break;
+				}
 				case BLOCK_FACE_YP:
 				{
 					NextSpeed.y = 0;
+					// We hit the ground, adjust the position to the top of the block:
+					m_bOnGround = true;
+					NextPos.y = HitBlockCoords.y + 1;
 					break;
 				}
 				case BLOCK_FACE_ZM:
+				{
+					NextSpeed.z = 0;
+					NextPos.z -= HalfWidth;
+					break;
+				}
 				case BLOCK_FACE_ZP:
 				{
 					NextSpeed.z = 0;
+					NextPos.z += HalfWidth;
 					break;
 				}
 				default:
@@ -1343,6 +1320,7 @@ void cEntity::DetectCacti(void)
 
 
 
+
 void cEntity::ScheduleMoveToWorld(cWorld * a_World, Vector3d a_NewPosition, bool a_SetPortalCooldown, bool a_ShouldSendRespawn)
 {
 	m_NewWorld = a_World;
@@ -1351,6 +1329,7 @@ void cEntity::ScheduleMoveToWorld(cWorld * a_World, Vector3d a_NewPosition, bool
 	m_WorldChangeSetPortalCooldown = a_SetPortalCooldown;
 	m_WorldChangeSendRespawn = a_ShouldSendRespawn;
 }
+
 
 
 
@@ -1934,23 +1913,21 @@ void cEntity::BroadcastMovementUpdate(const cClientHandle * a_Exclude)
 		if (!m_bHasSentNoSpeed || IsPlayer())
 		{
 			// TODO: Pickups move disgracefully if relative move packets are sent as opposed to just velocity. Have a system to send relmove only when SetPosXXX() is called with a large difference in position
-			int DiffX = FloorC(GetPosX() * 32.0) - FloorC(m_LastSentPosition.x * 32.0);
-			int DiffY = FloorC(GetPosY() * 32.0) - FloorC(m_LastSentPosition.y * 32.0);
-			int DiffZ = FloorC(GetPosZ() * 32.0) - FloorC(m_LastSentPosition.z * 32.0);
+			Vector3i Diff = (GetPosition() * 32.0).Floor() - (m_LastSentPosition * 32.0).Floor();
 
-			if ((DiffX != 0) || (DiffY != 0) || (DiffZ != 0))  // Have we moved?
+			if (Diff.HasNonZeroLength())  // Have we moved?
 			{
-				if ((abs(DiffX) <= 127) && (abs(DiffY) <= 127) && (abs(DiffZ) <= 127))  // Limitations of a Byte
+				if ((abs(Diff.x) <= 127) && (abs(Diff.y) <= 127) && (abs(Diff.z) <= 127))  // Limitations of a Byte
 				{
 					// Difference within Byte limitations, use a relative move packet
 					if (m_bDirtyOrientation)
 					{
-						m_World->BroadcastEntityRelMoveLook(*this, static_cast<char>(DiffX), static_cast<char>(DiffY), static_cast<char>(DiffZ), a_Exclude);
+						m_World->BroadcastEntityRelMoveLook(*this, Vector3<Int8>(Diff), a_Exclude);
 						m_bDirtyOrientation = false;
 					}
 					else
 					{
-						m_World->BroadcastEntityRelMove(*this, static_cast<char>(DiffX), static_cast<char>(DiffY), static_cast<char>(DiffZ), a_Exclude);
+						m_World->BroadcastEntityRelMove(*this, Vector3<Int8>(Diff), a_Exclude);
 					}
 					// Clients seem to store two positions, one for the velocity packet and one for the teleport / relmove packet
 					// The latter is only changed with a relmove / teleport, and m_LastSentPosition stores this position
@@ -1979,6 +1956,7 @@ void cEntity::BroadcastMovementUpdate(const cClientHandle * a_Exclude)
 		}
 	}
 }
+
 
 
 
@@ -2129,6 +2107,7 @@ void cEntity::SetSpeed(double a_SpeedX, double a_SpeedY, double a_SpeedZ)
 
 
 
+
 void cEntity::SetSpeedX(double a_SpeedX)
 {
 	SetSpeed(a_SpeedX, m_Speed.y, m_Speed.z);
@@ -2137,10 +2116,12 @@ void cEntity::SetSpeedX(double a_SpeedX)
 
 
 
+
 void cEntity::SetSpeedY(double a_SpeedY)
 {
 	SetSpeed(m_Speed.x, a_SpeedY, m_Speed.z);
 }
+
 
 
 
@@ -2158,6 +2139,7 @@ void cEntity::SetWidth(double a_Width)
 {
 	m_Width = a_Width;
 }
+
 
 
 
@@ -2270,6 +2252,7 @@ void cEntity::AddLeashedMob(cMonster * a_Monster)
 
 
 
+
 void cEntity::RemoveLeashedMob(cMonster * a_Monster)
 {
 	ASSERT(a_Monster->GetLeashedTo() == this);
@@ -2279,7 +2262,6 @@ void cEntity::RemoveLeashedMob(cMonster * a_Monster)
 
 	m_LeashedMobs.remove(a_Monster);
 }
-
 
 
 

@@ -4,7 +4,6 @@
 #include "../World.h"
 #include "../EffectID.h"
 #include "../Entities/Player.h"
-#include "Broadcaster.h"
 #include "UI/HorseWindow.h"
 
 
@@ -84,10 +83,10 @@ void cHorse::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 		{
 			if (Random.RandBool(0.02))
 			{
-				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, FloorC(GetPosX()), FloorC(GetPosY()), FloorC(GetPosZ()), int(SmokeDirection::SOUTH_EAST));
-				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, FloorC(GetPosX()), FloorC(GetPosY()), FloorC(GetPosZ()), int(SmokeDirection::SOUTH_WEST));
-				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, FloorC(GetPosX()), FloorC(GetPosY()), FloorC(GetPosZ()), int(SmokeDirection::NORTH_EAST));
-				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, FloorC(GetPosX()), FloorC(GetPosY()), FloorC(GetPosZ()), int(SmokeDirection::NORTH_WEST));
+				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, GetPosition().Floor(), int(SmokeDirection::SOUTH_EAST));
+				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, GetPosition().Floor(), int(SmokeDirection::SOUTH_WEST));
+				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, GetPosition().Floor(), int(SmokeDirection::NORTH_EAST));
+				m_World->BroadcastSoundParticleEffect(EffectID::PARTICLE_SMOKE, GetPosition().Floor(), int(SmokeDirection::NORTH_WEST));
 
 				m_World->BroadcastSoundEffect("entity.horse.angry", GetPosition(), 1.0f, 1.0f);
 				m_Attachee->Detach();
@@ -96,7 +95,7 @@ void cHorse::Tick(std::chrono::milliseconds a_Dt, cChunk & a_Chunk)
 		}
 		else
 		{
-			m_World->GetBroadcaster().BroadcastParticleEffect("heart", static_cast<Vector3f>(GetPosition()), Vector3f{}, 0, 5);
+			m_World->BroadcastParticleEffect("heart", static_cast<Vector3f>(GetPosition()), Vector3f{}, 0, 5);
 			m_bIsTame = true;
 		}
 	}

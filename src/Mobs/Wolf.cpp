@@ -5,7 +5,6 @@
 #include "../World.h"
 #include "../Entities/Player.h"
 #include "../Items/ItemHandler.h"
-#include "Broadcaster.h"
 
 
 
@@ -25,6 +24,7 @@ cWolf::cWolf(void) :
 	m_EMPersonality = PASSIVE;
 	GetMonsterConfig("Wolf");
 }
+
 
 
 

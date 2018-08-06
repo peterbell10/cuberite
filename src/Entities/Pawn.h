@@ -65,6 +65,9 @@ protected:
 
 	double m_LastGroundHeight;
 	bool m_bTouchGround;
+
+	virtual void ResetPosition(Vector3d a_NewPosition) override;
+
 } ;  // tolua_export
 
 
